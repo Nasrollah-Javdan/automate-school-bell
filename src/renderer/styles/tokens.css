@@ -1,0 +1,137 @@
+/* ==========================================================================
+   DS School Bell — design tokens
+   Everything is expressed in rem so the UI scale setting really scales the
+   whole interface. Colours are switched by the `data-theme` attribute.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/vazirmatn-arabic-wght-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* --- UI scale (settings → UI scale) ---------------------------------- */
+  --ui-scale: 1;
+
+  /* --- typography ------------------------------------------------------ */
+  --font-fa: 'Vazirmatn', 'Segoe UI', Tahoma, 'Iranian Sans', sans-serif;
+  --font-en: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-ui: var(--font-fa);
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-clock: 3.25rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- spacing --------------------------------------------------------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+
+  /* --- radii ----------------------------------------------------------- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-full: 999px;
+
+  /* --- light theme ----------------------------------------------------- */
+  --bg: #f3f4f6;
+  --bg-accent: #eef1fb;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --surface-3: #f2f4f7;
+  --surface-hover: #f4f6f9;
+  --border: #e4e7ec;
+  --border-strong: #cfd4dc;
+  --text: #10131a;
+  --text-2: #596273;
+  --text-3: #8a94a3;
+  --text-inverse: #ffffff;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef0fe;
+  --accent-border: #c7cbfb;
+
+  --success: #15803d;
+  --success-soft: #e8f6ed;
+  --warn: #b45309;
+  --warn-soft: #fdf3e3;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-soft: #fdeceb;
+  --info-soft: #e8f1fd;
+
+  --shadow-xs: 0 1px 2px rgb(16 24 40 / 6%);
+  --shadow-sm: 0 1px 3px rgb(16 24 40 / 8%), 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-md: 0 4px 12px rgb(16 24 40 / 8%), 0 2px 4px rgb(16 24 40 / 4%);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 12%), 0 4px 8px rgb(16 24 40 / 6%);
+
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  --ring: 0 0 0 2px rgb(79 70 229 / 35%);
+
+  --nav-width: 15rem;
+  --header-height: 3.5rem;
+}
+
+[data-theme='dark'] {
+  --bg: #0f1115;
+  --bg-accent: #14161d;
+  --surface: #171a21;
+  --surface-2: #1c2029;
+  --surface-3: #222733;
+  --surface-hover: #212633;
+  --border: #272c37;
+  --border-strong: #39404f;
+  --text: #eef1f6;
+  --text-2: #a4adbd;
+  --text-3: #737d8d;
+  --text-inverse: #0f1115;
+
+  --accent: #7c7bf5;
+  --accent-hover: #918ff8;
+  --accent-soft: #22233f;
+  --accent-border: #3b3c72;
+
+  --success: #4ade80;
+  --success-soft: #10291d;
+  --warn: #fbbf24;
+  --warn-soft: #2c2210;
+  --danger: #f87171;
+  --danger-hover: #fca5a5;
+  --danger-soft: #2d1618;
+  --info-soft: #16243a;
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 45%);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  --ring: 0 0 0 2px rgb(124 123 245 / 45%);
+}
+
+/* Larger screens: a little more breathing room. */
+@media (min-width: 1440px) {
+  :root {
+    --nav-width: 16.5rem;
+    --text-clock: 3.75rem;
+  }
+}

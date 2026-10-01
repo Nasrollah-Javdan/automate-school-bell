@@ -1,0 +1,64 @@
+appId: com.ds.schoolbell
+productName: DS School Bell
+copyright: Copyright © 2026 DS School Bell
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/{.eslintrc,.editorconfig,.prettierrc}'
+
+# The bundled bell tone is copied into the user's sounds folder on first run.
+extraResources:
+  - from: resources/default-bell.wav
+    to: default-bell.wav
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: ${productName}-Setup.${ext}
+  # No installer bloat: ship the app only.
+  legalTrademarks: DS School Bell
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DS School Bell
+  menuCategory: false
+  runAfterFinish: true
+  # Uninstaller and registry cleanup.
+  deleteAppDataOnUninstall: false
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  include: build/installer.nsh
+
+portable:
+  artifactName: ${productName}-Portable.${ext}
+
+linux:
+  target:
+    - AppImage
+  icon: resources/icon.png
+  category: Utility
+  synopsis: School bell scheduling
+  desktop:
+    entry:
+      Name: DS School Bell
+      Comment: School bell scheduling
+      Categories: Utility;AudioVideo;Audio;
+
+# Builds are intentionally unsigned: a school can install without a code
+# signing certificate. Windows SmartScreen will ask once on first install.
+# To sign your own builds, set CSC_LINK / CSC_KEY_PASSWORD in the environment.
