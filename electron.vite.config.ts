@@ -22,11 +22,7 @@ export default defineConfig({
     },
     resolve: { alias }
   },
-  /*
-   * A single preload bundle is used by both windows: a sandboxed preload
-   * script cannot `require` shared chunks, and the audio host page never
-   * touches `window.api`.
-   */
+  /* One preload bundle: a sandboxed preload cannot `require` shared chunks. */
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
@@ -48,8 +44,7 @@ export default defineConfig({
       sourcemap: false,
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/renderer/index.html'),
-          audioHost: resolve(__dirname, 'src/renderer/audio-host.html')
+          index: resolve(__dirname, 'src/renderer/index.html')
         }
       }
     },

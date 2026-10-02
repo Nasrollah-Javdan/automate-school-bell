@@ -21,13 +21,7 @@ const NAV: NavEntry[] = [
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings' }
 ]
 
-export function AppShell({
-  lang,
-  children
-}: {
-  lang: LanguageCode
-  children: ReactNode
-}): JSX.Element {
+export function AppShell({ lang, children }: { lang: LanguageCode; children: ReactNode }): JSX.Element {
   const { snapshot, page } = useRenderer()
   const mode: SystemMode = snapshot?.state.systemMode ?? 'active'
   const t = (key: Parameters<typeof translate>[1]) => translate(lang, key)

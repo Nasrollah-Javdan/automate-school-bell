@@ -15,6 +15,11 @@ const os = require('node:os')
 const fs = require('node:fs')
 
 const ROOT = path.join(__dirname, '..')
+
+// The harness re-exports the real main-process modules, compiled by
+// `npm run test:e2e` before this script runs.
+const M = require(path.join(ROOT, 'out', 'test-harness', 'main.cjs'))
+
 const DATA_DIR = path.join(os.tmpdir(), 'ds-school-bell-e2e')
 
 app.setPath('userData', DATA_DIR)
@@ -22,7 +27,49 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-software-rasterizer')
 
+/*
+ * Custom scheme privileges must be declared before the app becomes ready, and
+ * the audio protocol handler right after it — exactly like the real application
+ * does at startup. Both must happen before any test runs.
+ */
+M.registerAudioSchemePrivileges()
+
+// Electron quits once the last window closes. The tests close windows (the
+// hidden audio window), so quitting is suppressed for the whole run.
+app.on('window-all-closed', (event) => event.preventDefault())
+
+app.whenReady().then(() => M.registerAudioProtocol())
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// `app.exit()` can truncate buffered stdout, so the report is also written
+// synchronously to a file. Every run gets its own file, so concurrent runs can
+// never interleave their output.
+const LOG_FILE =
+  process.argv.find((arg) => arg.startsWith('--log='))?.slice(6) ??
+  path.join(os.tmpdir(), `ds-school-bell-e2e-${process.pid}.log`)
+
+// The report is kept in memory and written out on every line, so the file is
+// always complete and readable even if the process ends unexpectedly.
+const lines = []
+
+function writeLog() {
+  if (!LOG_FILE) return
+  try {
+    fs.writeFileSync(LOG_FILE, lines.join('\n') + '\n')
+  } catch {
+    /* the file is a convenience, never a reason to fail the run */
+  }
+}
+
+function report(line) {
+  const text = line.replace(/\x1b\[[0-9;]*m/g, '')
+  console.log(line)
+  lines.push(text)
+  writeLog()
+}
+
+const reportSync = report
 
 let passed = 0
 let failed = 0
@@ -30,46 +77,38 @@ let failed = 0
 function check(name, condition, detail = '') {
   if (condition) {
     passed += 1
-    console.log(`  \x1b[32mPASS\x1b[0m  ${name}${detail ? ` — ${detail}` : ''}`)
+    report(`  PASS  ${name}${detail ? ` — ${detail}` : ''}`)
   } else {
     failed += 1
-    console.log(`  \x1b[31mFAIL\x1b[0m  ${name}${detail ? ` — ${detail}` : ''}`)
+    report(`  FAIL  ${name}${detail ? ` — ${detail}` : ''}`)
   }
 }
 
 function section(title) {
-  console.log(`\n\x1b[1m${title}\x1b[0m`)
+  report('')
+  report(title)
 }
-
-/** Load the compiled main-process modules from out/main. */
-function loadMain() {
-  const outMain = path.join(ROOT, 'out', 'main', 'index.js')
-  // The bundle is CommonJS; requiring it would run the app, so instead we
-  // exercise the individual modules through the compiled chunk graph.
-  const bundle = fs.readFileSync(outMain, 'utf8')
-  void bundle
-
-  // electron-vite emits one file, so the modules are loaded by rebuilding the
-  // individual sources with esbuild-less require of the TS output is not
-  // possible. We therefore test through a small compiled harness.
-  return null
-}
-
-void loadMain
 
 async function main() {
+  // The tests close windows (for example the audio window), which can leave the
+  // event loop empty and end the process in the middle of an `await`. A periodic
+  // timer keeps it alive for the duration of the run.
+  const keepAlive = setInterval(() => undefined, 1000)
+
   section('Environment')
-  console.log(`  electron ${process.versions.electron}, node ${process.versions.node}, ${process.platform}`)
+  report(`  electron ${process.versions.electron}, node ${process.versions.node}, ${process.platform}`)
 
   /* ---------------------------------------------------------------- *
    * Storage round trip
    * ---------------------------------------------------------------- */
   section('Storage: atomic JSON persistence')
 
-  const { AppStore } = await importMain('storage/appStore.js')
-  const { LogStore } = await importMain('storage/logStore.js')
-  const { readJsonFile, writeJsonFileAtomic, fileExists } = await importMain('storage/jsonFile.js')
-  const { parseAppState } = await importMain('../shared/validate.js')
+  const { AppStore } = M
+  const { LogStore } = M
+  const { readJsonFile, writeJsonFileAtomic, fileExists } = M
+  const { parseAppState } = M
+  const { getSoundsDir } = M
+  const { StateService } = M
 
   const testFile = path.join(DATA_DIR, 'atomic-test.json')
   await writeJsonFileAtomic(testFile, { hello: 'world', n: 1 })
@@ -86,9 +125,11 @@ async function main() {
   const recovered = await readJsonFile(testFile)
   check('recovers from a corrupt file via the backup', recovered.recovered && recovered.value?.hello === 'world')
 
+  // Break both the file and its backup: the caller must get a clean null.
   fs.writeFileSync(testFile, 'not json at all')
+  fs.writeFileSync(`${testFile}.bak`, '{"hello":"broken backup"')
   const missing = await readJsonFile(testFile)
-  check('survives a completely broken file', missing.value === null && missing.error !== null)
+  check('survives a completely broken file', missing.value === null, missing.error ?? 'no error reported')
 
   /* ---------------------------------------------------------------- *
    * Default state
@@ -133,48 +174,46 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Audio: protocol and hidden playback window')
 
-  const { registerAudioSchemePrivileges, registerAudioProtocol } = await importMain('audio/audioProtocol.js')
-  const { AudioService } = await importMain('audio/audioService.js')
+  const { AudioService } = M
 
-  // Privileges must normally be declared before the app is ready; at this point
-  // they are still registered, which is enough for the handler itself.
-  registerAudioSchemePrivileges()
-  registerAudioProtocol()
-
-  const { AudioError } = await importMain('../shared/audioPlayer.js')
+  const { AudioError } = M
   void AudioError
 
-  const audio = new AudioService()
-  const bundledSound = path.join(ROOT, 'resources', 'default-bell.wav')
-  await wait(200)
+  await fs.promises.mkdir(getSoundsDir(), { recursive: true })
 
-  let played = false
+  const audio = new AudioService()
+  // Copy the bundled tone into the app sounds folder, exactly as the real
+  // first run does, then play it from there.
+  const bundledSound = path.join(getSoundsDir(), 'default-bell.wav')
+  fs.mkdirSync(getSoundsDir(), { recursive: true })
+  fs.copyFileSync(path.join(ROOT, 'resources', 'default-bell.wav'), bundledSound)
+
+  let playError = ''
   try {
     await audio.play({ filePath: bundledSound, volume: 0.5 })
-    played = true
   } catch (error) {
-    check('plays the bundled bell tone', false, error.message)
+    playError = error.message
   }
-  if (played) check('plays the bundled bell tone', true)
+  check('plays the bell tone', playError === '', playError)
 
   audio.stop()
   await wait(200)
   check('stops without throwing', true)
 
   const duration = await audio.probe(bundledSound).catch(() => null)
-  check('reads the duration of a file', typeof duration === 'number' && duration > 0, `${duration}`)
+  check('reads the duration of a file', typeof duration === 'number' && duration > 0, `duration=${duration}`)
 
   // A file that does not exist must produce a clear error, not a crash.
   let missingError = ''
   try {
-    await audio.play({ filePath: path.join(DATA_DIR, 'nope.wav'), volume: 0.5 })
+    await audio.play({ filePath: path.join(getSoundsDir(), 'nope.wav'), volume: 0.5 })
   } catch (error) {
     missingError = error.message
   }
   check('reports a missing file clearly', missingError.length > 0, missingError)
 
   // A file with an unsupported extension must be refused.
-  const notAudio = path.join(DATA_DIR, 'notes.txt')
+  const notAudio = path.join(getSoundsDir(), 'notes.txt')
   fs.writeFileSync(notAudio, 'this is not audio')
   let formatError = ''
   try {
@@ -189,12 +228,11 @@ async function main() {
   /* ---------------------------------------------------------------- *
    * Scheduler with the real audio service
    * ---------------------------------------------------------------- */
+  reportSync('')
   section('Scheduler: fires bells through the real audio path')
 
-  const { SchedulerEngine } = await importMain('scheduler/schedulerEngine.js')
-  const { getSoundsDir } = await importMain('storage/paths.js')
-  const { StateService } = await importMain('services/stateService.js')
-  const { buildSnapshot } = await importMain('services/snapshot.js')
+  const { SchedulerEngine } = M
+  const { buildSnapshot } = M
 
   const freshStore = (await AppStore.load()).store
   const freshLog = await LogStore.load()
@@ -275,8 +313,16 @@ async function main() {
   )
   check('renders today’s bells', Array.isArray(snapshot.todayBells))
 
-  console.log(`  … waiting for ${time} (bell due in about a minute)`)
-  await wait(70_000)
+  report(`  … waiting for ${time} (bell due in about a minute)`)
+
+  // Poll in short steps: the report stays live while waiting, and an early
+  // finish does not force us to sit through the full delay.
+  const deadline = Date.now() + 100_000
+  while (Date.now() < deadline) {
+    await wait(1000)
+    if (freshLog.get().some((entry) => entry.code === 'log.bell.played')) break
+  }
+  report(`  … wait finished after ${Math.round((100_000 - (deadline - Date.now())) / 1000)}s`)
 
   const codes = freshLog.get().map((entry) => entry.code)
   check('rings the bell on time', codes.includes('log.bell.played'), codes.join(', '))
@@ -343,9 +389,7 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Backup: export and restore')
 
-  const { buildBackup, parseBackup, writeBackupFile, readBackupSafe } = await importMain(
-    'storage/backupService.js'
-  )
+  const { buildBackup, parseBackup, writeBackupFile, readBackupSafe } = M
 
   const backupPayload = buildBackup(freshStore.get())
   check('backup contains the app marker', backupPayload.app === 'ds-school-bell')
@@ -377,7 +421,7 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Localization')
 
-  const { translate, MESSAGES, directionOf } = await importMain('../i18n/index.js')
+  const { translate, MESSAGES, directionOf } = M
   check('has a Persian catalogue', Object.keys(MESSAGES.fa).length > 200, `${Object.keys(MESSAGES.fa).length} keys`)
   check('has an English catalogue', Object.keys(MESSAGES.en).length > 200, `${Object.keys(MESSAGES.en).length} keys`)
   check(
@@ -396,7 +440,7 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Window and security setup')
 
-  const { WindowManager } = await importMain('window/mainWindow.js')
+  const { WindowManager } = M
   const manager = new WindowManager({ closeToTray: () => true, minimizeToTray: () => true })
   const window = manager.create(nativeTheme.shouldUseDarkColors ? '#14161a' : '#f5f6f8', true)
   await wait(800)
@@ -429,7 +473,7 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('System tray')
 
-  const { TrayService } = await importMain('tray/trayService.js')
+  const { TrayService } = M
   const commands = []
   const tray = new TrayService({
     getLanguage: () => 'fa',
@@ -438,7 +482,7 @@ async function main() {
   })
 
   if (process.platform === 'linux') {
-    console.log('  (skipped: no notification area on this desktop session)')
+    report('  (skipped: no notification area on this desktop session)')
   } else {
     tray.create()
     tray.update('paused')
@@ -453,7 +497,7 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Windows auto start')
 
-  const { setAutoLaunch, isAutoLaunchEnabled, launchedAtStartup } = await importMain('system/autoLaunch.js')
+  const { setAutoLaunch, isAutoLaunchEnabled, launchedAtStartup } = M
   check('reports the startup flag', launchedAtStartup() === process.argv.includes('--autostart'))
   if (app.isPackaged) {
     const result = setAutoLaunch(true)
@@ -461,26 +505,21 @@ async function main() {
     check('reads the login item back', isAutoLaunchEnabled() === true)
     setAutoLaunch(false)
   } else {
-    console.log('  (skipped: not packaged, the registry entry is not written in development)')
+    report('  (skipped: not packaged, the registry entry is not written in development)')
   }
 
   /* ---------------------------------------------------------------- *
    * Summary
    * ---------------------------------------------------------------- */
   section('Summary')
-  console.log(`  ${passed} passed, ${failed} failed`)
+  report(`  ${passed} passed, ${failed} failed`)
+  clearInterval(keepAlive)
   app.exit(failed === 0 ? 0 : 1)
-}
-
-/** Load one of the compiled main-process modules. */
-async function importMain(relativePath) {
-  const target = path.join(ROOT, 'out', 'main', relativePath)
-  return import(target)
 }
 
 app.whenReady().then(() => {
   main().catch((error) => {
-    console.error('\x1b[31mE2E crashed:\x1b[0m', error)
+    reportSync(`  E2E CRASHED: ${error && error.stack ? error.stack : String(error)}`)
     app.exit(1)
   })
 })

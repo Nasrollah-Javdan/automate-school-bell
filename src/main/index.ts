@@ -157,7 +157,9 @@ async function handleTrayCommand(command: TrayCommand): Promise<void> {
       }
       break
     case 'exit': {
-      const confirmed = await new SystemService(services, new StateService(services)).confirm('dialog.exitMessage')
+      const confirmed = await new SystemService(services, new StateService(services)).confirm(
+        'dialog.exitMessage'
+      )
       if (confirmed) quit()
       break
     }

@@ -166,7 +166,9 @@ export function HolidaysPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
         </CardBody>
       </Card>
 
-      {adding ? <HolidayDialog lang={lang} existingKeys={existingKeys} onClose={() => setAdding(false)} /> : null}
+      {adding ? (
+        <HolidayDialog lang={lang} existingKeys={existingKeys} onClose={() => setAdding(false)} />
+      ) : null}
 
       {confirm.dialog}
     </div>

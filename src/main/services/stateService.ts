@@ -22,7 +22,12 @@ import { isValidJalaliDate, jalaliKey } from '../../utils/jalali.js'
 import { isValidTime } from '../../utils/time.js'
 import { createId } from '../../utils/id.js'
 import { allowLinkedPath, forgetLinkedPath } from '../audio/audioProtocol.js'
-import { isSupportedSoundFile, soundFilePath, importSoundFile, removeSoundFile } from '../storage/soundLibrary.js'
+import {
+  isSupportedSoundFile,
+  soundFilePath,
+  importSoundFile,
+  removeSoundFile
+} from '../storage/soundLibrary.js'
 import { getSoundsDir } from '../storage/paths.js'
 import { isAutoLaunchEnabled, setAutoLaunch } from '../system/autoLaunch.js'
 import { DEFAULT_SOUND_FILE, defaultSound } from '../../shared/defaults.js'
@@ -58,12 +63,19 @@ export class StateService {
         startWithWindows = patch.startWithWindows
       } else {
         const message = result.error ?? 'unknown error'
-        this.services.toast({ level: 'warn', code: 'settings.startupUnavailable', params: { error: message } })
+        this.services.toast({
+          level: 'warn',
+          code: 'settings.startupUnavailable',
+          params: { error: message }
+        })
         startWithWindows = isAutoLaunchEnabled()
       }
     }
 
-    const next = sanitizeSettings({ ...current.settings, ...patch, startWithWindows }, current.settings.language)
+    const next = sanitizeSettings(
+      { ...current.settings, ...patch, startWithWindows },
+      current.settings.language
+    )
     this.services.theme.apply(next.theme)
 
     const interesting =
@@ -82,7 +94,12 @@ export class StateService {
     const current = this.services.store.get()
     if (current.systemMode === mode) return current
 
-    const code = mode === 'active' ? 'log.system.activated' : mode === 'paused' ? 'log.system.paused' : 'log.system.disabled'
+    const code =
+      mode === 'active'
+        ? 'log.system.activated'
+        : mode === 'paused'
+          ? 'log.system.paused'
+          : 'log.system.disabled'
     const level: LogLevel = 'info'
     this.services.log.append(code, level)
 
@@ -121,7 +138,10 @@ export class StateService {
 
   removeBell(scheduleId: string, bellId: string): AppState {
     const title =
-      this.services.store.get().schedules.find((schedule) => schedule.id === scheduleId)?.bells.find((bell) => bell.id === bellId)?.title ?? ''
+      this.services.store
+        .get()
+        .schedules.find((schedule) => schedule.id === scheduleId)
+        ?.bells.find((bell) => bell.id === bellId)?.title ?? ''
 
     const state = this.services.store.update((draft) => {
       const schedule = this.requireSchedule(draft, scheduleId)
@@ -166,7 +186,8 @@ export class StateService {
       if (draft.schedules.some((schedule) => schedule.name.toLowerCase() === trimmed.toLowerCase())) {
         throw new AppError('schedule.profileNameTaken')
       }
-      const template = draft.schedules.find((schedule) => schedule.id === draft.activeScheduleId) ?? draft.schedules[0]
+      const template =
+        draft.schedules.find((schedule) => schedule.id === draft.activeScheduleId) ?? draft.schedules[0]
       draft.schedules.push({
         id,
         name: trimmed,
@@ -184,7 +205,9 @@ export class StateService {
     if (!trimmed) throw new AppError('schedule.profileNameEmpty')
     this.services.store.update((draft) => {
       const schedule = this.requireSchedule(draft, id)
-      if (draft.schedules.some((item) => item.id !== id && item.name.toLowerCase() === trimmed.toLowerCase())) {
+      if (
+        draft.schedules.some((item) => item.id !== id && item.name.toLowerCase() === trimmed.toLowerCase())
+      ) {
         throw new AppError('schedule.profileNameTaken')
       }
       schedule.name = trimmed
@@ -224,7 +247,9 @@ export class StateService {
   }
 
   updateScheduleDays(id: string, days: Weekday[]): AppState {
-    const unique = Array.from(new Set(days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))) as Weekday[]
+    const unique = Array.from(
+      new Set(days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))
+    ) as Weekday[]
     if (unique.length === 0) throw new AppError('schedule.daysRequired')
     return this.services.store.update((draft) => {
       const schedule = this.requireSchedule(draft, id)
@@ -258,7 +283,11 @@ export class StateService {
         allowLinkedPath(sourcePath)
         sound = {
           id: createId('snd'),
-          name: sourcePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? 'sound',
+          name:
+            sourcePath
+              .split(/[\\/]/)
+              .pop()
+              ?.replace(/\.[^.]+$/, '') ?? 'sound',
           source: 'external',
           fileName: null,
           externalPath: sourcePath,
@@ -268,7 +297,9 @@ export class StateService {
         }
       }
     } catch (error) {
-      throw new AppError('sounds.importFailed', { error: error instanceof Error ? error.message : String(error) })
+      throw new AppError('sounds.importFailed', {
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
 
     this.services.store.update((draft) => {
@@ -289,7 +320,9 @@ export class StateService {
     try {
       imported = await importSoundFile(sourcePath, getSoundsDir())
     } catch (error) {
-      throw new AppError('sounds.importFailed', { error: error instanceof Error ? error.message : String(error) })
+      throw new AppError('sounds.importFailed', {
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
 
     const state = this.services.store.update((draft) => {
@@ -442,8 +475,8 @@ export class StateService {
     if (alreadyInstalled && (await fileExists(target))) return
     if (await fileExists(target)) return
 
-    const source = bundledSoundPath()
-    if (!source || !(await fileExists(source))) {
+    const source = await findBundledSound()
+    if (!source) {
       console.warn('[audio] the bundled default bell sound is missing from this build')
       return
     }
@@ -505,12 +538,31 @@ function supportsAutoLaunchOnThisPlatform(): boolean {
  * Location of the bell tone shipped with the application.
  *
  * Packaged builds put it next to the executable (`process.resourcesPath`),
- * while in development it is in the project `resources` folder.
+ * while in development it is in the project `resources` folder. Several
+ * candidates are checked because the layout differs between the two.
  */
-function bundledSoundPath(): string | null {
-  const candidates = [
-    join(process.resourcesPath ?? '', DEFAULT_SOUND_FILE),
-    join(app.getAppPath(), 'resources', DEFAULT_SOUND_FILE)
+export function bundledSoundCandidates(): string[] {
+  const roots = [
+    process.resourcesPath,
+    process.resourcesPath ? join(process.resourcesPath, 'app.asar.unpacked', 'resources') : null,
+    process.resourcesPath ? join(process.resourcesPath, 'extraResources') : null,
+    app.getAppPath(),
+    process.cwd()
   ]
-  return candidates.find((path) => path.length > 0) ?? null
+
+  const candidates: string[] = []
+  for (const root of roots) {
+    if (!root) continue
+    candidates.push(join(root, DEFAULT_SOUND_FILE))
+    candidates.push(join(root, 'resources', DEFAULT_SOUND_FILE))
+  }
+  return candidates
+}
+
+/** First bundled bell tone that actually exists on disk. */
+async function findBundledSound(): Promise<string | null> {
+  for (const candidate of bundledSoundCandidates()) {
+    if (await fileExists(candidate)) return candidate
+  }
+  return null
 }

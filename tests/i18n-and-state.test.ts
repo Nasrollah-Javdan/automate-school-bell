@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import en from '../src/i18n/en.js'
 import fa from '../src/i18n/fa.js'
 import { MESSAGES, directionOf, translate, translator, weekdayName } from '../src/i18n/index.js'
-import { ParseError, parseAppState, parseLogEntries, sanitizeBell, sanitizeSettings } from '../src/shared/validate.js'
+import {
+  ParseError,
+  parseAppState,
+  parseLogEntries,
+  sanitizeBell,
+  sanitizeSettings
+} from '../src/shared/validate.js'
 import { createDefaultState } from '../src/shared/defaults.js'
 
 describe('localization', () => {
@@ -34,7 +40,9 @@ describe('localization', () => {
     expect(translate('en', 'schedule.profileBells', { count: 5 })).toBe('5 bells')
     expect(translate('fa', 'schedule.profileBells', { count: 5 })).toBe('۵ زنگ')
     expect(translate('fa', 'log.entry.log.bell.missed', { title: 'Break', time: '10:15' })).toContain('۱۰:۱۵')
-    expect(translate('fa', 'sounds.fileMissingHint', { path: 'D:\\sounds\\1.wav' })).toContain('D:\\sounds\\1.wav')
+    expect(translate('fa', 'sounds.fileMissingHint', { path: 'D:\\sounds\\1.wav' })).toContain(
+      'D:\\sounds\\1.wav'
+    )
   })
 
   it('falls back to English for an unknown key', () => {

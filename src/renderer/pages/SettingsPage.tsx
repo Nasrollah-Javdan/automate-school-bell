@@ -68,11 +68,17 @@ export function SettingsPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
             </SettingRow>
 
             <SettingRow title={t('settings.minimizeToTray')} hint={t('settings.minimizeToTrayHint')}>
-              <Switch checked={settings.minimizeToTray} onChange={(checked) => update({ minimizeToTray: checked })} />
+              <Switch
+                checked={settings.minimizeToTray}
+                onChange={(checked) => update({ minimizeToTray: checked })}
+              />
             </SettingRow>
 
             <SettingRow title={t('settings.closeToTray')} hint={t('settings.closeToTrayHint')}>
-              <Switch checked={settings.closeToTray} onChange={(checked) => update({ closeToTray: checked })} />
+              <Switch
+                checked={settings.closeToTray}
+                onChange={(checked) => update({ closeToTray: checked })}
+              />
             </SettingRow>
           </CardBody>
         </Card>
@@ -82,13 +88,22 @@ export function SettingsPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
           <CardBody>
             <SettingRow title={t('settings.volume')} hint={t('settings.volumeHint')}>
               <div className="setting__control setting__control--wide">
-                <Slider ariaLabel={t('settings.volume')} value={settings.volume} onCommit={(value) => update({ volume: value })} />
+                <Slider
+                  ariaLabel={t('settings.volume')}
+                  value={settings.volume}
+                  onCommit={(value) => update({ volume: value })}
+                />
               </div>
             </SettingRow>
 
             <SettingRow title={t('settings.defaultBell')} hint={t('sounds.volumeHint')}>
               <div className="setting__control">
-                <Button size="sm" variant="outline" icon="bell" onClick={() => runSafely(() => window.api.playTestBell())}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon="bell"
+                  onClick={() => runSafely(() => window.api.playTestBell())}
+                >
                   {t('settings.testSound')}
                 </Button>
               </div>
@@ -124,7 +139,11 @@ export function SettingsPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
           <CardBody>
             <SettingRow title={t('settings.backupExport')} hint={t('settings.backupExportHint')}>
               <div className="setting__control">
-                <Button variant="outline" icon="download" onClick={() => runSafely(() => window.api.backupToFile())}>
+                <Button
+                  variant="outline"
+                  icon="download"
+                  onClick={() => runSafely(() => window.api.backupToFile())}
+                >
                   {t('settings.backupExport')}
                 </Button>
               </div>
@@ -132,7 +151,11 @@ export function SettingsPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
 
             <SettingRow title={t('settings.backupImport')} hint={t('settings.backupImportHint')}>
               <div className="setting__control">
-                <Button variant="outline" icon="upload" onClick={() => runSafely(() => window.api.restoreFromFile())}>
+                <Button
+                  variant="outline"
+                  icon="upload"
+                  onClick={() => runSafely(() => window.api.restoreFromFile())}
+                >
                   {t('settings.backupImport')}
                 </Button>
               </div>
@@ -154,7 +177,10 @@ export function SettingsPage({ lang, snapshot }: { lang: LanguageCode; snapshot:
                   onChange={(value: MissedBellPolicy) => update({ missedBellPolicy: value })}
                   options={[
                     { value: 'ignore' as MissedBellPolicy, label: t('settings.missedPolicy.ignore') },
-                    { value: 'playIfRecent' as MissedBellPolicy, label: t('settings.missedPolicy.playIfRecent') }
+                    {
+                      value: 'playIfRecent' as MissedBellPolicy,
+                      label: t('settings.missedPolicy.playIfRecent')
+                    }
                   ]}
                 />
               </div>

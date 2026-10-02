@@ -92,7 +92,8 @@ export function isLeapJalaliYear(year: number): boolean {
 }
 
 export function isValidJalaliDate(date: JalaliDate): boolean {
-  if (!Number.isInteger(date.year) || !Number.isInteger(date.month) || !Number.isInteger(date.day)) return false
+  if (!Number.isInteger(date.year) || !Number.isInteger(date.month) || !Number.isInteger(date.day))
+    return false
   if (!isJalaliYearSupported(date.year)) return false
   if (date.month < 1 || date.month > 12) return false
   if (date.day < 1) return false
@@ -258,7 +259,9 @@ const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '�
 const ARABIC_INDIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
 
 export function toPersianDigits(input: string): string {
-  return input.replace(/[0-9]/g, (d) => PERSIAN_DIGITS[Number(d)]).replace(/[٠-٩]/g, (d) => PERSIAN_DIGITS[ARABIC_INDIC_DIGITS.indexOf(d)])
+  return input
+    .replace(/[0-9]/g, (d) => PERSIAN_DIGITS[Number(d)])
+    .replace(/[٠-٩]/g, (d) => PERSIAN_DIGITS[ARABIC_INDIC_DIGITS.indexOf(d)])
 }
 
 export function toLatinDigits(input: string): string {

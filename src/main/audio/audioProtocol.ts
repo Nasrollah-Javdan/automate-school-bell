@@ -1,7 +1,8 @@
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
-import { protocol } from 'electron'
+import { app, protocol } from 'electron'
 import { AUDIO_SCHEME } from '../../shared/audioTypes.js'
 import { isInsideDir, isSupportedSoundFile, soundExtension } from '../storage/soundLibrary.js'
 import { getSoundsDir } from '../storage/paths.js'
@@ -60,10 +61,14 @@ function parseRange(header: string, size: number): { start: number; end: number 
 }
 
 /**
- * Serves user audio files to the audio host window.
+ * Serves user audio files to the hidden playback window.
  *
- * Files inside the app's sounds folder are always allowed; files outside it are
- * only served when the user explicitly linked them from the file picker.
+ * Three sources are trusted:
+ *  - anything inside the app's sounds folder;
+ *  - files the user explicitly linked through the file picker;
+ *  - the bundled default bell tone that ships with the application.
+ *
+ * Everything else is refused, so a crafted URL cannot read arbitrary files.
  */
 export function registerAudioProtocol(): void {
   protocol.handle(AUDIO_SCHEME, async (request) => {
@@ -72,9 +77,9 @@ export function registerAudioProtocol(): void {
       return new Response('unsupported audio file', { status: 400 })
     }
 
-    const soundsDir = getSoundsDir()
-    const linkedFromOutside = !isInsideDir(filePath, soundsDir)
-    if (linkedFromOutside && !explicitlyLinked(filePath)) {
+    const trusted = isTrustedAudioPath(filePath)
+    if (!trusted) {
+      console.warn(`[audio] refused a file the user never selected: ${filePath}`)
       return new Response('file is not linked', { status: 403 })
     }
 
@@ -116,7 +121,7 @@ export function registerAudioProtocol(): void {
   })
 }
 
-/** Paths the user picked through the file dialog, filled in by the sound service. */
+/** Paths the user picked through the file dialog, registered by the sound service. */
 const linkedPaths = new Set<string>()
 
 export function allowLinkedPath(filePath: string): void {
@@ -127,6 +132,21 @@ export function forgetLinkedPath(filePath: string): void {
   linkedPaths.delete(filePath)
 }
 
-function explicitlyLinked(filePath: string): boolean {
-  return linkedPaths.has(filePath)
+/** Roots whose contents are always safe to serve. */
+function trustedRoots(): string[] {
+  const roots = [getSoundsDir()]
+
+  // The bell tone that ships with the application.
+  const bundled = process.resourcesPath
+  if (bundled) roots.push(join(bundled, 'sounds'))
+  const appPath = app.getAppPath?.()
+  if (appPath) roots.push(join(appPath, 'resources'))
+
+  return roots
+}
+
+function isTrustedAudioPath(filePath: string): boolean {
+  const normalized = resolve(filePath)
+  if (trustedRoots().some((root) => isInsideDir(normalized, root))) return true
+  return linkedPaths.has(normalized) || linkedPaths.has(filePath)
 }

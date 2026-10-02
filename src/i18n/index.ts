@@ -11,8 +11,7 @@ export const MESSAGES: Record<LanguageCode, Messages> = { en, fa }
 export const LANGUAGES: readonly LanguageCode[] = ['fa', 'en']
 export const DEFAULT_LANGUAGE: LanguageCode = 'fa'
 
-export const isLanguage = (value: unknown): value is LanguageCode =>
-  value === 'fa' || value === 'en'
+export const isLanguage = (value: unknown): value is LanguageCode => value === 'fa' || value === 'en'
 
 export const directionOf = (lang: LanguageCode): Direction => (lang === 'fa' ? 'rtl' : 'ltr')
 

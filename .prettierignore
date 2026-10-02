@@ -1,0 +1,11 @@
+out
+release
+node_modules
+screenshots
+package-lock.json
+resources/icon.png
+resources/icon.ico
+resources/tray.png
+resources/tray@2x.png
+resources/default-bell.wav
+src/renderer/styles/fonts/*.woff2

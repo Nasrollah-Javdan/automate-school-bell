@@ -172,7 +172,6 @@ html[dir='fa'] .hero__next-label {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  flex-wrap: wrap;
   padding: var(--sp-4) var(--sp-5);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -180,9 +179,23 @@ html[dir='fa'] .hero__next-label {
 }
 
 .schedule-bar__select {
-  min-width: 12rem;
-  flex: 1;
-  max-width: 20rem;
+  min-width: 10rem;
+  flex: 1 1 12rem;
+  max-width: 22rem;
+}
+
+/* Keeps the action buttons together instead of wrapping apart on small widths. */
+.schedule-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1100px) {
+  .schedule-bar {
+    flex-wrap: wrap;
+  }
 }
 
 .sound-cell {

@@ -52,7 +52,9 @@ export function resolveDayPlan(state: AppState, date: Date): DayPlan {
 
 /** Bells are always kept in time order; identical times keep their relative order. */
 export function sortBells(bells: readonly Bell[]): Bell[] {
-  return [...bells].sort((a, b) => (a.time === b.time ? a.id.localeCompare(b.id) : a.time.localeCompare(b.time)))
+  return [...bells].sort((a, b) =>
+    a.time === b.time ? a.id.localeCompare(b.id) : a.time.localeCompare(b.time)
+  )
 }
 
 /** The first bell that has not started yet. */

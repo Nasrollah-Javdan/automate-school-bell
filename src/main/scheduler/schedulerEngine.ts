@@ -114,7 +114,7 @@ export class SchedulerEngine {
   }
 
   /** Play one specific sound file, e.g. the "test" button in the Sounds page. */
-async playSoundById(soundId: string): Promise<void> {
+  async playSoundById(soundId: string): Promise<void> {
     const state = this.store.get()
     const sound = state.sounds.find((item) => item.id === soundId)
     if (!sound) throw new AudioError('sound not found')
@@ -225,7 +225,11 @@ async playSoundById(soundId: string): Promise<void> {
       this.events.onToast({ level: 'success', code: 'toast.bellPlayed', params: { title: bell.title } })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      this.log.append('log.bell.playbackFailed', 'error', { title: bell.title, time: bell.time, error: message })
+      this.log.append('log.bell.playbackFailed', 'error', {
+        title: bell.title,
+        time: bell.time,
+        error: message
+      })
       this.events.onToast({
         level: 'error',
         code: 'toast.playbackFailed',

@@ -52,7 +52,7 @@ export async function writeJsonFileAtomic(file: string, data: unknown): Promise<
     await writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
   } catch (error) {
     await unlink(tmp).catch(() => undefined)
-    throw new Error(`Could not write ${file}: ${errorMessage(error)}`)
+    throw new Error(`Could not write ${file}: ${errorMessage(error)}`, { cause: error })
   }
 
   try {

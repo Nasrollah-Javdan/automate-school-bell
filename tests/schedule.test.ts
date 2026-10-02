@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { AppState, Bell, Holiday, ScheduleProfile, Sound } from '../src/types/index.js'
 import { buildTodayView, findHoliday, nextBellOf, resolveDayPlan, sortBells } from '../src/shared/today.js'
-import { bellOccurrenceId, formatClockTime, formatCountdown, isValidTime, minutesToTime, timeToMinutes } from '../src/utils/time.js'
+import {
+  bellOccurrenceId,
+  formatClockTime,
+  formatCountdown,
+  isValidTime,
+  minutesToTime,
+  timeToMinutes
+} from '../src/utils/time.js'
 
 const bell = (id: string, time: string, extra: Partial<Bell> = {}): Bell => ({
   id,

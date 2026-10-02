@@ -1,4 +1,11 @@
-import { useState, type ChangeEvent, type InputHTMLAttributes, type JSX, type ReactNode, type SelectHTMLAttributes } from 'react'
+import {
+  useState,
+  type ChangeEvent,
+  type InputHTMLAttributes,
+  type JSX,
+  type ReactNode,
+  type SelectHTMLAttributes
+} from 'react'
 import { Icon } from '../Icon.js'
 
 /* ------------------------------------------------------------------ Field */
@@ -83,7 +90,10 @@ export interface SelectOption<T extends string> {
   label: string
 }
 
-export interface SelectFieldProps<T extends string> extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange' | 'value'> {
+export interface SelectFieldProps<T extends string> extends Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  'onChange' | 'value'
+> {
   label?: string
   hint?: string
   value: T

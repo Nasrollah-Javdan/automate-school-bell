@@ -1,244 +1,231 @@
-import { join } from 'node:path'
-import { BrowserWindow, ipcMain } from 'electron'
-import type { IpcMainEvent } from 'electron'
-import type { AudioCommand, AudioEvent } from '../../shared/audioTypes.js'
-import { audioSrcFor } from '../../shared/audioTypes.js'
+import { BrowserWindow, app } from 'electron'
 import type { AudioPlayer } from '../../shared/audioPlayer.js'
 import { AudioError } from '../../shared/audioPlayer.js'
-import { CH } from '../../shared/channels.js'
+import { audioSrcFor } from '../../shared/audioTypes.js'
 
 const START_TIMEOUT_MS = 8000
 const PROBE_TIMEOUT_MS = 8000
 
-interface Pending {
-  resolve: (value: never) => void
-  reject: (error: Error) => void
-  timer: NodeJS.Timeout
-}
+/**
+ * The script injected into the hidden playback window.
+ *
+ * It owns one `<audio>` element and reports progress by resolving the
+ * `executeJavaScript` promise, which keeps the main process in control of the
+ * timing and removes any dependency on the page's own messaging.
+ */
+const HOST_SCRIPT = `
+(() => {
+  const media = new Audio()
+  media.preload = 'auto'
+
+  const waitUntilPlayable = (timeout) =>
+    new Promise((resolve, reject) => {
+      const cleanup = () => {
+        media.removeEventListener('canplaythrough', onReady)
+        media.removeEventListener('canplay', onReady)
+        media.removeEventListener('error', onError)
+        clearTimeout(timer)
+      }
+      const onReady = () => { cleanup(); resolve(null) }
+      const onError = () => {
+        cleanup()
+        const detail = media.error
+        reject(new Error(detail ? (detail.message || 'decode error') + ' (code ' + detail.code + ')' : 'decode error'))
+      }
+      const timer = setTimeout(onReady, timeout)
+      media.addEventListener('canplaythrough', onReady, { once: true })
+      media.addEventListener('canplay', onReady, { once: true })
+      media.addEventListener('error', onError, { once: true })
+      media.load()
+    })
+
+  window.__bellHost = {
+    async play(src, volume) {
+      media.pause()
+      media.volume = Math.max(0, Math.min(1, volume))
+      media.src = src
+      await waitUntilPlayable(2500)
+      await media.play()
+      return true
+    },
+    stop() {
+      media.pause()
+      return true
+    },
+    async probe(src) {
+      const probeMedia = new Audio()
+      probeMedia.preload = 'metadata'
+      probeMedia.src = src
+      await new Promise((resolve, reject) => {
+        probeMedia.addEventListener('loadedmetadata', resolve, { once: true })
+        probeMedia.addEventListener('canplay', resolve, { once: true })
+        probeMedia.addEventListener('error', () => reject(new Error('cannot read the file')), { once: true })
+        setTimeout(() => reject(new Error('metadata timeout')), 3000)
+      })
+      const duration = probeMedia.duration
+      probeMedia.src = ''
+      return Number.isFinite(duration) ? duration : null
+    }
+  }
+  return true
+})()
+`
 
 /**
  * Plays audio in a dedicated hidden window.
  *
- * Isolating playback there means bell sounds keep working even if the user
- * interface is hidden, slow or being rebuilt.
+ * Isolating playback there means bell sounds keep working even when the user
+ * interface is hidden, slow or being rebuilt — the bell engine never depends on
+ * a visible window.
  */
 export class AudioService implements AudioPlayer {
   private window: BrowserWindow | null = null
   private readyPromise: Promise<void> | null = null
-  private resolveReady: (() => void) | null = null
-  private readonly pending = new Map<string, Pending>()
+  private pending = new Map<string, Promise<void>>()
   private counter = 0
   private disposed = false
-  private lastRequestId: string | null = null
 
-  get isPlaying(): boolean {
-    return this.lastRequestId !== null
-  }
-
-  /** Create the audio host window (idempotent). */
+  /** Create the playback window and inject the audio controller (idempotent). */
   ensureStarted(): Promise<void> {
     if (this.disposed) return Promise.reject(new AudioError('audio service is disposed'))
     if (this.readyPromise) return this.readyPromise
 
-    this.readyPromise = new Promise<void>((resolve, reject) => {
-      this.resolveReady = resolve
-      try {
-        this.createWindow()
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error(String(error)))
-      }
-      setTimeout(() => {
-        if (this.resolveReady) {
-          this.resolveReady = null
-          reject(new AudioError('audio host did not start in time'))
+    this.readyPromise = (async () => {
+      const window = new BrowserWindow({
+        width: 240,
+        height: 160,
+        skipTaskbar: true,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        frame: false,
+        show: false,
+        webPreferences: {
+          // No preload and no remote content: this window only plays audio.
+          sandbox: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+          backgroundThrottling: false,
+          devTools: false,
+          spellcheck: false
         }
-      }, 15000).unref?.()
+      })
+
+      this.window = window
+
+      window.on('closed', () => {
+        this.window = null
+        this.readyPromise = null
+        this.failAll(new AudioError('the audio window was closed'))
+      })
+
+      window.webContents.on('render-process-gone', () => {
+        this.failAll(new AudioError('the audio window crashed'))
+      })
+
+      window.webContents.on('did-fail-load', (_event, code, description) => {
+        console.error('[audio] playback window failed to load:', code, description)
+      })
+
+      // `about:blank` is enough: the controller is injected right after load.
+      await window.loadURL('about:blank')
+      await window.webContents.executeJavaScript(HOST_SCRIPT, true)
+    })().catch((error: unknown) => {
+      this.readyPromise = null
+      throw error instanceof Error ? error : new AudioError(String(error))
     })
 
     return this.readyPromise
   }
 
-  private createWindow(): void {
-    const window = new BrowserWindow({
-      show: false,
-      width: 240,
-      height: 160,
-      skipTaskbar: true,
-      resizable: false,
-      minimizable: false,
-      maximizable: false,
-      fullscreenable: false,
-      frame: false,
-      webPreferences: {
-        preload: join(__dirname, '../preload/index.js'),
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        backgroundThrottling: false,
-        devTools: false,
-        spellcheck: false
-      }
-    })
-
-    window.on('closed', () => {
-      this.detachIpc()
-      this.window = null
-      this.readyPromise = null
-      this.resolveReady = null
-      this.failAllPending(new AudioError('audio host was closed'))
-    })
-
-    window.webContents.on('render-process-gone', () => {
-      this.failAllPending(new AudioError('audio host crashed'))
-    })
-
-    const handler = (_event: IpcMainEvent, payload: unknown) => this.handleEvent(payload as AudioEvent)
-    ipcMain.on(CH.audioHostEvent, handler)
-    this.detachIpc = () => ipcMain.off(CH.audioHostEvent, handler)
-
-    void window.loadURL(audioHostUrl())
-  }
-
-  private detachIpc: () => void = () => undefined
-
-  private handleEvent(event: AudioEvent): void {
-    if (!event || typeof event !== 'object') return
-    if (event.type === 'ready') {
-      this.resolveReady?.()
-      this.resolveReady = null
-      return
-    }
-
-    const pending = this.pending.get(event.requestId)
-    if (!pending) return
-
-    if (event.type === 'started') {
-      this.clear(pending)
-      this.pending.delete(event.requestId)
-      this.lastRequestId = event.requestId
-      ;(pending.resolve as (value: unknown) => void)(undefined)
-      return
-    }
-
-    if (event.type === 'ended') {
-      if (this.lastRequestId === event.requestId) this.lastRequestId = null
-      if (this.pending.has(event.requestId)) return
-      return
-    }
-
-    if (event.type === 'probed') {
-      this.clear(pending)
-      this.pending.delete(event.requestId)
-      ;(pending.resolve as (value: unknown) => void)(event.durationSec)
-      return
-    }
-
-    if (event.type === 'error') {
-      this.clear(pending)
-      this.pending.delete(event.requestId)
-      if (this.lastRequestId === event.requestId) this.lastRequestId = null
-      pending.reject(new AudioError(event.message))
-    }
-  }
-
-  /** Play a sound. Resolves as soon as playback has actually started. */
+  /** Play a file. Resolves as soon as playback has actually started. */
   async play(options: { filePath: string; volume: number }): Promise<void> {
     await this.ensureStarted()
-    const requestId = this.nextId('play')
-    const result = new Promise<void>((resolve, reject) => {
-      this.register(
-        requestId,
-        resolve as (value: never) => void,
-        reject,
-        START_TIMEOUT_MS,
-        'the sound did not start in time'
-      )
-    })
-    this.send({ type: 'play', requestId, src: audioSrcFor(options.filePath), volume: clampVolume(options.volume) })
-    await result
+    const window = this.window
+    if (!window) throw new AudioError('the audio window is not available')
+
+    const src = audioSrcFor(options.filePath)
+    await this.invoke(
+      `window.__bellHost.play(${JSON.stringify(src)}, ${Number(options.volume) || 0})`,
+      START_TIMEOUT_MS,
+      'the sound did not start in time'
+    )
   }
 
   stop(): void {
-    if (!this.window) return
-    const requestId = this.nextId('stop')
-    this.lastRequestId = null
-    this.send({ type: 'stop', requestId })
+    const window = this.window
+    if (!window) return
+    this.pending.clear()
+    void window.webContents
+      .executeJavaScript('window.__bellHost && window.__bellHost.stop()')
+      .catch(() => undefined)
   }
 
-  /** Read the duration of a file without playing it. */
+  /** Read the duration of a file, or null when it cannot be determined. */
   async probe(filePath: string): Promise<number | null> {
     await this.ensureStarted()
-    const requestId = this.nextId('probe')
-    const result = new Promise<number | null>((resolve, reject) => {
-      this.register(
-        requestId,
-        resolve as (value: never) => void,
-        reject,
-        PROBE_TIMEOUT_MS,
-        'the file could not be read'
-      )
-    })
-    this.send({ type: 'probe', requestId, src: audioSrcFor(filePath) })
-    return result
+    const src = audioSrcFor(filePath)
+    const value = await this.invoke(
+      `window.__bellHost.probe(${JSON.stringify(src)})`,
+      PROBE_TIMEOUT_MS,
+      'the file could not be read'
+    )
+    return typeof value === 'number' ? value : null
   }
 
-  private register(
-    requestId: string,
-    resolve: (value: never) => void,
-    reject: (error: Error) => void,
-    timeout: number,
-    timeoutMessage: string
-  ): void {
-    const timer = setTimeout(() => {
-      this.pending.delete(requestId)
-      reject(new AudioError(timeoutMessage))
-    }, timeout)
-    timer.unref?.()
-    this.pending.set(requestId, { resolve, reject, timer })
-  }
+  /**
+   * Run code in the playback window with a timeout.
+   * Rejections inside the page are turned into a readable Error.
+   */
+  private async invoke(expression: string, timeoutMs: number, timeoutMessage: string): Promise<unknown> {
+    const window = this.window
+    if (!window) throw new AudioError('the audio window is not available')
 
-  private clear(pending: Pending): void {
-    clearTimeout(pending.timer)
-  }
-
-  private failAllPending(error: Error): void {
-    for (const [id, pending] of this.pending) {
-      this.clear(pending)
-      pending.reject(error)
-      this.pending.delete(id)
-    }
-    this.lastRequestId = null
-  }
-
-  private nextId(prefix: string): string {
     this.counter += 1
-    return `${prefix}_${Date.now().toString(36)}_${this.counter}`
+    const key = `call_${this.counter}`
+
+    const promise = window.webContents
+      .executeJavaScript(`Promise.resolve(${expression})`, true)
+      .then((value) => value)
+      .catch((error: unknown) => {
+        throw new AudioError(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        this.pending.delete(key)
+      })
+
+    this.pending.set(key, promise)
+
+    let timer: NodeJS.Timeout | undefined
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new AudioError(timeoutMessage)), timeoutMs)
+      timer.unref?.()
+    })
+
+    try {
+      return await Promise.race([promise, timeout])
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
   }
 
-  private send(command: AudioCommand): void {
-    if (!this.window || this.window.isDestroyed()) return
-    this.window.webContents.send(CH.audioHostCommand, command)
+  private failAll(error: Error): void {
+    for (const promise of this.pending.values()) {
+      // Rejection handlers are attached by `invoke`; this just clears the map.
+      void promise.catch(() => undefined)
+    }
+    this.pending.clear()
+    void error
   }
 
   dispose(): void {
     this.disposed = true
-    this.failAllPending(new AudioError('audio service stopped'))
-    this.detachIpc()
-    this.detachIpc = () => undefined
+    this.failAll(new AudioError('audio service stopped'))
     if (this.window && !this.window.isDestroyed()) this.window.destroy()
     this.window = null
     this.readyPromise = null
-    this.resolveReady = null
   }
 }
 
-function clampVolume(value: number): number {
-  if (!Number.isFinite(value)) return 0.5
-  return Math.min(1, Math.max(0, value))
-}
-
-function audioHostUrl(): string {
-  const devServer = process.env.ELECTRON_RENDERER_URL
-  if (devServer) return `${devServer.replace(/\/$/, '')}/audio-host.html`
-  return `file://${join(__dirname, '../renderer/audio-host.html').replace(/\\/g, '/')}`
-}
+void app

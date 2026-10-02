@@ -12,7 +12,8 @@ const isEditable = (target: EventTarget | null): boolean => {
 
 /** True when Space belongs to the focused control, not to a shortcut. */
 const spaceBelongsToControl = (target: EventTarget | null): boolean =>
-  target instanceof HTMLElement && (ACTIVATABLE_TAGS.has(target.tagName) || target.getAttribute('role') === 'switch')
+  target instanceof HTMLElement &&
+  (ACTIVATABLE_TAGS.has(target.tagName) || target.getAttribute('role') === 'switch')
 
 /**
  * Global keyboard shortcuts.

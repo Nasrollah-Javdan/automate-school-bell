@@ -179,7 +179,8 @@ const fa: Messages = {
   'sounds.sourceExternal': 'فایل بیرونی',
   'sounds.path': 'فایل',
   'sounds.remove': 'حذف صدا',
-  'sounds.removeConfirm': 'صدای «{name}» حذف شود؟ زنگ‌هایی که از آن استفاده می‌کنند از صدای پیش‌فرض استفاده می‌کنند.',
+  'sounds.removeConfirm':
+    'صدای «{name}» حذف شود؟ زنگ‌هایی که از آن استفاده می‌کنند از صدای پیش‌فرض استفاده می‌کنند.',
   'sounds.empty': 'هنوز فایل صوتی اضافه نشده است',
   'sounds.emptyHint': 'برای زنگ، یک فایل MP3، WAV یا OGG اضافه کنید.',
   'sounds.emptyFiltered': 'فایل صوتی وجود ندارد',
@@ -305,7 +306,8 @@ const fa: Messages = {
   'settings.resetConfirm': 'همه اطلاعات برنامه پاک شود؟ این کار قابل بازگشت نیست.',
   'settings.resetDone': 'اطلاعات برنامه بازنشانی شد',
   'settings.openDataFolder': 'باز کردن پوشه اطلاعات',
-  'settings.dataFolderHint': 'همه اطلاعات به‌صورت محلی در همین پوشه ذخیره می‌شود و چیزی به اینترنت ارسال نمی‌شود.',
+  'settings.dataFolderHint':
+    'همه اطلاعات به‌صورت محلی در همین پوشه ذخیره می‌شود و چیزی به اینترنت ارسال نمی‌شود.',
   'settings.startupUnavailable': 'تغییر اجرای خودکار ویندوز ممکن نشد: {error}',
   'settings.notSavedYet': 'تغییرات ذخیره‌نشده',
   'settings.missedBells': 'زنگ‌های از دست رفته',
@@ -346,7 +348,8 @@ const fa: Messages = {
   'error.description': 'در رابط کاربری خطایی رخ داد، اما موتور زنگ همچنان کار می‌کند.',
   'error.reload': 'بازنشانی رابط کاربری',
   'error.fatalTitle': 'برنامه زنگ مدرسه DS اجرا نشد',
-  'error.fatalMessage': 'برنامه را دوباره اجرا کنید. در صورت تکرار مشکل، اطلاعات شما در این مسیر سالم است: {path}',
+  'error.fatalMessage':
+    'برنامه را دوباره اجرا کنید. در صورت تکرار مشکل، اطلاعات شما در این مسیر سالم است: {path}',
 
   /* ---------------- Backup / misc ---------------- */
   'backup.invalidFile': 'این فایل نسخه پشتیبان برنامه زنگ مدرسه DS نیست.',
@@ -370,8 +373,7 @@ const fa: Messages = {
   'default.bell.third': 'زنگ سوم',
   'default.soundName': 'زنگ پیش‌فرض',
   'firstRun.title': 'به زنگ مدرسه DS خوش آمدید',
-  'firstRun.message':
-    'یک برنامه آماده ساخته شد. از بخش «برنامه زنگ‌ها» ساعت‌ها و صداها را تغییر دهید.',
+  'firstRun.message': 'یک برنامه آماده ساخته شد. از بخش «برنامه زنگ‌ها» ساعت‌ها و صداها را تغییر دهید.',
   'firstRun.action': 'رفتن به برنامه'
 }
 

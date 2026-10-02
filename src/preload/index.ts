@@ -13,7 +13,6 @@ import type {
   Unsubscribe,
   Weekday
 } from '../types/index.js'
-import type { AudioCommand, AudioEvent } from '../shared/audioTypes.js'
 import { CH, EVENT_CHANNEL } from '../shared/channels.js'
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
@@ -79,17 +78,3 @@ const api: MainApi = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
-/*
- * The hidden audio host window uses the same preload. It only needs these two
- * functions: receive playback commands and report what happened.
- */
-contextBridge.exposeInMainWorld('bellAudioHost', {
-  emit: (event: AudioEvent): void => {
-    ipcRenderer.send(CH.audioHostEvent, event)
-  },
-  onCommand: (listener: (command: AudioCommand) => void): (() => void) => {
-    const handler = (_event: unknown, command: AudioCommand): void => listener(command)
-    ipcRenderer.on(CH.audioHostCommand, handler)
-    return () => ipcRenderer.off(CH.audioHostCommand, handler)
-  }
-})

@@ -61,9 +61,7 @@ export function WeekdayPicker({
       </div>
       <div className="row-between">
         <span className="text-xs text-3">
-          {selected.size === 0
-            ? t('weekday.none')
-            : `${translate(lang, 'schedule.days')}: ${selected.size}`}
+          {selected.size === 0 ? t('weekday.none') : `${translate(lang, 'schedule.days')}: ${selected.size}`}
         </span>
         <button
           type="button"

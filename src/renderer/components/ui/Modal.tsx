@@ -16,14 +16,7 @@ export interface ModalProps {
  * Accessible dialog: Esc closes it, focus moves inside, and the rest of the
  * interface is not interactive while it is open.
  */
-export function Modal({
-  title,
-  children,
-  footer,
-  onClose,
-  closeLabel,
-  wide
-}: ModalProps): JSX.Element {
+export function Modal({ title, children, footer, onClose, closeLabel, wide }: ModalProps): JSX.Element {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -42,7 +35,12 @@ export function Modal({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className={`modal${wide ? ' modal--wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={`modal${wide ? ' modal--wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <header className="modal__header">
           <h2 className="modal__title">{title}</h2>
           <IconButton icon="x" label={closeLabel ?? 'Close'} onClick={onClose} />

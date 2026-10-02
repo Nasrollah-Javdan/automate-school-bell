@@ -17,7 +17,13 @@ const ICONS: Record<string, IconName> = {
   error: 'alert'
 }
 
-function ToastItem({ id, code, level, params, actionId }: ReturnType<typeof useRenderer>['toasts'][number]): JSX.Element {
+function ToastItem({
+  id,
+  code,
+  level,
+  params,
+  actionId
+}: ReturnType<typeof useRenderer>['toasts'][number]): JSX.Element {
   const { snapshot } = useRenderer()
   const lang = snapshot?.state.settings.language ?? 'fa'
   const text = translate(lang, code, params)

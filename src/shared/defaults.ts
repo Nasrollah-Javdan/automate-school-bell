@@ -1,4 +1,12 @@
-import type { AppState, Bell, LanguageCode, ScheduleProfile, Settings, Sound, UiScale } from '../types/index.js'
+import type {
+  AppState,
+  Bell,
+  LanguageCode,
+  ScheduleProfile,
+  Settings,
+  Sound,
+  UiScale
+} from '../types/index.js'
 import { APP_STATE_VERSION } from '../types/index.js'
 import { translate } from '../i18n/index.js'
 import { createId } from '../utils/id.js'

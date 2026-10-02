@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useState, type JSX } from 'react'
 import type { AppSnapshot, Bell, LanguageCode, ScheduleProfile } from '../../types/index.js'
 import { translate } from '../../i18n/index.js'
 import { formatClockTime } from '../../utils/time.js'
@@ -77,14 +77,14 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(lang, key, params)
 
-  useEffect(() => {
-    if (!schedules.some((schedule) => schedule.id === selectedId)) {
-      setSelectedId(state.activeScheduleId || schedules[0]?.id || '')
-    }
-  }, [schedules, selectedId, state.activeScheduleId])
-
-  const schedule: ScheduleProfile | undefined =
-    schedules.find((item) => item.id === selectedId) ?? schedules[0]
+  /*
+   * The selected schedule is derived state: when the current one disappears
+   * (it was deleted, or the schedules were restored from a backup) the app
+   * falls back to the active one. Deriving it during render avoids an extra
+   * render pass.
+   */
+  const selected = schedules.some((item) => item.id === selectedId) ? selectedId : undefined
+  const schedule: ScheduleProfile | undefined = schedules.find((item) => item.id === selected) ?? schedules[0]
   const bells = sortBells(schedule?.bells ?? [])
   const isActive = schedule?.id === state.activeScheduleId
   const today = weekdayIndex(new Date())
@@ -148,37 +148,37 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
           </Button>
         )}
 
-        <span className="grow" />
-
-        <Button
-          size="sm"
-          icon="plus"
-          onClick={() => setNameDialog({ mode: 'create', value: '' })}
-        >
-          {t('schedule.profileNew')}
-        </Button>
-        <Button size="sm" icon="edit" onClick={() => setNameDialog({ mode: 'rename', value: schedule.name })}>
-          {t('common.rename')}
-        </Button>
-        <IconButton
-          icon="trash"
-          label={t('schedule.profileDelete')}
-          tone="danger"
-          disabled={schedules.length <= 1}
-          onClick={() =>
-            confirm.request({
-              title: t('schedule.profileDelete'),
-              message: t('schedule.profileDeleteConfirm', {
-                name: schedule.name,
-                count: bells.length
-              }),
-              confirmLabel: t('common.delete'),
-              cancelLabel: t('common.cancel'),
-              tone: 'danger',
-              onConfirm: () => runSafely(() => window.api.deleteSchedule(schedule.id))
-            })
-          }
-        />
+        <div className="schedule-bar__actions">
+          <Button size="sm" icon="plus" onClick={() => setNameDialog({ mode: 'create', value: '' })}>
+            {t('schedule.profileNew')}
+          </Button>
+          <Button
+            size="sm"
+            icon="edit"
+            onClick={() => setNameDialog({ mode: 'rename', value: schedule.name })}
+          >
+            {t('common.rename')}
+          </Button>
+          <IconButton
+            icon="trash"
+            label={t('schedule.profileDelete')}
+            tone="danger"
+            disabled={schedules.length <= 1}
+            onClick={() =>
+              confirm.request({
+                title: t('schedule.profileDelete'),
+                message: t('schedule.profileDeleteConfirm', {
+                  name: schedule.name,
+                  count: bells.length
+                }),
+                confirmLabel: t('common.delete'),
+                cancelLabel: t('common.cancel'),
+                tone: 'danger',
+                onConfirm: () => runSafely(() => window.api.deleteSchedule(schedule.id))
+              })
+            }
+          />
+        </div>
       </div>
 
       <Card>
@@ -200,11 +200,7 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
         <CardHeader
           title={t('schedule.bells')}
           icon="bell"
-          actions={
-            <span className="badge">
-              {t('schedule.profileBells', { count: bells.length })}
-            </span>
-          }
+          actions={<span className="badge">{t('schedule.profileBells', { count: bells.length })}</span>}
         />
         <CardBody flush>
           {bells.length === 0 ? (
@@ -233,7 +229,9 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
                 <tbody>
                   {bells.map((bell, index) => {
                     const sound = bell.soundId ? state.sounds.find((item) => item.id === bell.soundId) : null
-                    const missing = Boolean(bell.soundId && snapshot.soundFiles[bell.soundId]?.available === false)
+                    const missing = Boolean(
+                      bell.soundId && snapshot.soundFiles[bell.soundId]?.available === false
+                    )
 
                     return (
                       <tr key={bell.id} className={bell.enabled ? '' : 'table__row--muted'}>
@@ -264,7 +262,9 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
                           <Switch
                             checked={bell.enabled}
                             onChange={(checked) =>
-                              runSafely(() => window.api.updateBell(schedule.id, { ...bell, enabled: checked }))
+                              runSafely(() =>
+                                window.api.updateBell(schedule.id, { ...bell, enabled: checked })
+                              )
                             }
                           />
                         </td>
@@ -282,7 +282,9 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
                               label={t('common.moveDown')}
                               size="sm"
                               disabled={index === bells.length - 1}
-                              onClick={() => runSafely(() => window.api.moveBell(schedule.id, bell.id, 'down'))}
+                              onClick={() =>
+                                runSafely(() => window.api.moveBell(schedule.id, bell.id, 'down'))
+                              }
                             />
                             <IconButton
                               icon="edit"
@@ -302,7 +304,8 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
                                   confirmLabel: t('common.delete'),
                                   cancelLabel: t('common.cancel'),
                                   tone: 'danger',
-                                  onConfirm: () => runSafely(() => window.api.removeBell(schedule.id, bell.id))
+                                  onConfirm: () =>
+                                    runSafely(() => window.api.removeBell(schedule.id, bell.id))
                                 })
                               }
                             />
@@ -322,6 +325,8 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
 
       {dialog ? (
         <BellDialog
+          // A new key per opening resets the form without an effect.
+          key={dialog.id ?? 'new-bell'}
           lang={lang}
           scheduleId={schedule.id}
           draft={dialog}
@@ -335,11 +340,7 @@ export function SchedulePage({ lang, snapshot }: { lang: LanguageCode; snapshot:
       {nameDialog ? (
         <ScheduleNameDialog
           lang={lang}
-          title={
-            nameDialog.mode === 'create'
-              ? t('schedule.profileNew')
-              : t('schedule.profileRename')
-          }
+          title={nameDialog.mode === 'create' ? t('schedule.profileNew') : t('schedule.profileRename')}
           initialValue={nameDialog.value}
           onClose={() => setNameDialog(null)}
           onSubmit={(name) => {

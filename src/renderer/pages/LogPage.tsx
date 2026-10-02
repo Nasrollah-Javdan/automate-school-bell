@@ -14,12 +14,13 @@ type Filter = 'all' | 'success' | 'warn' | 'error'
 
 const FILTERS: readonly Filter[] = ['all', 'success', 'warn', 'error']
 
-const FILTER_LABELS: Record<Filter, 'log.filterAll' | 'common.success' | 'common.warning' | 'common.error'> = {
-  all: 'log.filterAll',
-  success: 'common.success',
-  warn: 'common.warning',
-  error: 'common.error'
-}
+const FILTER_LABELS: Record<Filter, 'log.filterAll' | 'common.success' | 'common.warning' | 'common.error'> =
+  {
+    all: 'log.filterAll',
+    success: 'common.success',
+    warn: 'common.warning',
+    error: 'common.error'
+  }
 
 export function LogPage({ lang, logs }: { lang: LanguageCode; logs: LogEntry[] }): JSX.Element {
   const [filter, setFilter] = useState<Filter>('all')

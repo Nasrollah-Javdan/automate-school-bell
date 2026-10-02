@@ -41,12 +41,14 @@ export function registerIpc(services: AppServices, state: StateService, system: 
   }
 
   /** State mutation: refresh everything and answer with the new snapshot. */
-  const mutate = <A extends unknown[]>(listener: (...args: A) => AppState | Promise<AppState>) =>
+  const mutate =
+    <A extends unknown[]>(listener: (...args: A) => AppState | Promise<AppState>) =>
     async (...args: A): Promise<AppSnapshot> => {
       try {
         await listener(...args)
       } catch (error) {
-        throw new Error(describe(error))
+        // Translated for the user, with the original error kept as the cause.
+        throw new Error(describe(error), { cause: error })
       }
       services.refresh()
       return buildSnapshot(services)
@@ -100,21 +102,41 @@ export function registerIpc(services: AppServices, state: StateService, system: 
     mutate((scheduleId: string, bell: Omit<Bell, 'id'>) => state.addBell(scheduleId, bell))
   )
 
-  handle(CH.bellUpdate, mutate((scheduleId: string, bell: Bell) => state.updateBell(scheduleId, bell)))
+  handle(
+    CH.bellUpdate,
+    mutate((scheduleId: string, bell: Bell) => state.updateBell(scheduleId, bell))
+  )
 
-  handle(CH.bellRemove, mutate((scheduleId: string, bellId: string) => state.removeBell(scheduleId, bellId)))
+  handle(
+    CH.bellRemove,
+    mutate((scheduleId: string, bellId: string) => state.removeBell(scheduleId, bellId))
+  )
 
   handle(
     CH.bellMove,
-    mutate((scheduleId: string, bellId: string, direction: 'up' | 'down') => state.moveBell(scheduleId, bellId, direction))
+    mutate((scheduleId: string, bellId: string, direction: 'up' | 'down') =>
+      state.moveBell(scheduleId, bellId, direction)
+    )
   )
 
   /* ---------------- schedules ---------------- */
 
-  handle(CH.scheduleCreate, mutate((name: string) => state.createSchedule(name)))
-  handle(CH.scheduleRename, mutate((id: string, name: string) => state.renameSchedule(id, name)))
-  handle(CH.scheduleDelete, mutate((id: string) => state.deleteSchedule(id)))
-  handle(CH.scheduleSetActive, mutate((id: string) => state.setActiveSchedule(id)))
+  handle(
+    CH.scheduleCreate,
+    mutate((name: string) => state.createSchedule(name))
+  )
+  handle(
+    CH.scheduleRename,
+    mutate((id: string, name: string) => state.renameSchedule(id, name))
+  )
+  handle(
+    CH.scheduleDelete,
+    mutate((id: string) => state.deleteSchedule(id))
+  )
+  handle(
+    CH.scheduleSetActive,
+    mutate((id: string) => state.setActiveSchedule(id))
+  )
 
   handle(
     CH.scheduleUpdateDays,
@@ -159,17 +181,32 @@ export function registerIpc(services: AppServices, state: StateService, system: 
     })
   )
 
-  handle(CH.soundUpdate, mutate((sound: Sound) => state.updateSound(sound)))
+  handle(
+    CH.soundUpdate,
+    mutate((sound: Sound) => state.updateSound(sound))
+  )
 
-  handle(CH.soundRemove, mutate((soundId: string) => state.removeSound(soundId)))
+  handle(
+    CH.soundRemove,
+    mutate((soundId: string) => state.removeSound(soundId))
+  )
 
-  handle(CH.soundSetDefault, mutate((soundId: string | null) => state.setDefaultSound(soundId)))
+  handle(
+    CH.soundSetDefault,
+    mutate((soundId: string | null) => state.setDefaultSound(soundId))
+  )
 
   /* ---------------- holidays ---------------- */
 
-  handle(CH.holidayAdd, mutate((holiday: Omit<Holiday, 'id'>) => state.addHoliday(holiday)))
+  handle(
+    CH.holidayAdd,
+    mutate((holiday: Omit<Holiday, 'id'>) => state.addHoliday(holiday))
+  )
 
-  handle(CH.holidayRemove, mutate((id: string) => state.removeHoliday(id)))
+  handle(
+    CH.holidayRemove,
+    mutate((id: string) => state.removeHoliday(id))
+  )
 
   /* ---------------- backup / reset ---------------- */
 

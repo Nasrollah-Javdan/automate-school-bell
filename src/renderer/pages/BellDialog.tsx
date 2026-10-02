@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useState, type JSX } from 'react'
 import type { AppSnapshot, Bell, LanguageCode, Sound } from '../../types/index.js'
 import { translate } from '../../i18n/index.js'
 import { toLatinDigits } from '../../utils/jalali.js'
@@ -37,12 +37,12 @@ export function BellDialog({
   existingTimes: string[]
   onClose: () => void
 }): JSX.Element {
+  // The dialog is mounted per opening with a fresh `key`, so the initial state
+  // is all that is needed — no syncing effect required.
   const [form, setForm] = useState<Draft>(draft)
   const [touched, setTouched] = useState(false)
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(lang, key, params)
-
-  useEffect(() => setForm(draft), [draft])
 
   const timeValue = toLatinDigits(form.time).trim()
   const timeError = timeValue && !isValidTime(timeValue) ? t('schedule.bellTimeInvalid') : ''
@@ -121,7 +121,9 @@ export function BellDialog({
         label={t('sounds.title')}
         value={form.soundId ?? ''}
         options={soundOptions}
-        onValueChange={(value) => setForm((current) => ({ ...current, soundId: value === '' ? null : value }))}
+        onValueChange={(value) =>
+          setForm((current) => ({ ...current, soundId: value === '' ? null : value }))
+        }
       />
 
       {form.soundId && snapshot.soundFiles[form.soundId]?.available === false ? (

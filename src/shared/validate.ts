@@ -110,7 +110,8 @@ export function sanitizeSound(raw: unknown): Sound | null {
   if (source === 'external' && !externalPath) return null
   if (source === 'library' && !fileName) return null
 
-  const duration = raw.durationSec === null || raw.durationSec === undefined ? null : asNumber(raw.durationSec, 0)
+  const duration =
+    raw.durationSec === null || raw.durationSec === undefined ? null : asNumber(raw.durationSec, 0)
 
   return {
     id: asId(raw.id, 'snd'),
@@ -241,8 +242,9 @@ export function parseAppState(raw: unknown): ParseResult<AppState> {
   const holidays = (Array.isArray(raw.holidays) ? raw.holidays : [])
     .map(sanitizeHoliday)
     .filter((holiday): holiday is Holiday => holiday !== null)
-    .sort((a, b) =>
-      a.jalali.year - b.jalali.year || a.jalali.month - b.jalali.month || a.jalali.day - b.jalali.day
+    .sort(
+      (a, b) =>
+        a.jalali.year - b.jalali.year || a.jalali.month - b.jalali.month || a.jalali.day - b.jalali.day
     )
 
   const soundIds = new Set(sounds.map((sound) => sound.id))
@@ -253,7 +255,7 @@ export function parseAppState(raw: unknown): ParseResult<AppState> {
 
   const scheduleIds = new Set(schedules.map((schedule) => schedule.id))
   const wanted = asString(raw.activeScheduleId)
-  let activeScheduleId = scheduleIds.has(wanted) ? wanted : (schedules[0]?.id ?? '')
+  const activeScheduleId = scheduleIds.has(wanted) ? wanted : (schedules[0]?.id ?? '')
   if (!scheduleIds.has(wanted)) notes.push('state: active schedule was reset')
   settings.activeScheduleId = activeScheduleId
 

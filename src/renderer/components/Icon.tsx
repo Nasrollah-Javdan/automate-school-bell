@@ -115,7 +115,9 @@ const paths: Record<string, JSX.Element> = {
       <path d="M12 7v5l3.5 2" />
     </>
   ),
-  folder: <path d="M3 7.5A2 2 0 0 1 5 5.5h3.6a2 2 0 0 1 1.5.7l1.2 1.4H19a2 2 0 0 1 2 2v7.4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z" />,
+  folder: (
+    <path d="M3 7.5A2 2 0 0 1 5 5.5h3.6a2 2 0 0 1 1.5.7l1.2 1.4H19a2 2 0 0 1 2 2v7.4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z" />
+  ),
   upload: (
     <>
       <path d="M12 16V4" />

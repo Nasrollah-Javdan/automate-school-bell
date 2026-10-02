@@ -5,7 +5,9 @@ import { pushToast } from '../store/appStore.js'
  * Runs an async operation, prevents double clicks and turns any failure into
  * a visible message instead of an unhandled rejection.
  */
-export function useAsyncAction<A extends unknown[]>(fn: (...args: A) => Promise<unknown>): {
+export function useAsyncAction<A extends unknown[]>(
+  fn: (...args: A) => Promise<unknown>
+): {
   run: (...args: A) => Promise<void>
   busy: boolean
 } {

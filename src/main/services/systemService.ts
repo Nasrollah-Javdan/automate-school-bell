@@ -104,7 +104,8 @@ export class SystemService {
       parsed = parseBackup(JSON.parse(raw))
     } catch (error) {
       const message = errorMessage(error)
-      const code = message.includes('newer') || message.includes('too new') ? 'backup.tooNew' : 'backup.invalidFile'
+      const code =
+        message.includes('newer') || message.includes('too new') ? 'backup.tooNew' : 'backup.invalidFile'
       throw new AppError(code, { error: message })
     }
 

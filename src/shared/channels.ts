@@ -23,7 +23,7 @@ export const CH = {
   soundImport: 'sound.import',
   soundLink: 'sound.link',
   soundProbe: 'sound.probe',
-soundTest: 'sound.test',
+  soundTest: 'sound.test',
   soundRelink: 'sound.relink',
   soundUpdate: 'sound.update',
   soundRemove: 'sound.remove',

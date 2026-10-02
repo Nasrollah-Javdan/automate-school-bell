@@ -2,12 +2,7 @@ import { useMemo, type JSX } from 'react'
 import type { AppSnapshot, LanguageCode, SystemMode, TodayBell } from '../../types/index.js'
 import { translate } from '../../i18n/index.js'
 import { buildTodayView } from '../../shared/today.js'
-import {
-  formatClockTime,
-  formatClockTimeWithSeconds,
-  formatCountdown,
-  timeOnDate
-} from '../../utils/time.js'
+import { formatClockTime, formatClockTimeWithSeconds, formatCountdown, timeOnDate } from '../../utils/time.js'
 import { formatGregorian, formatJalali } from '../../utils/jalali.js'
 import { Button } from '../components/ui/Button.js'
 import { Badge, Card, CardBody, CardHeader, StatusPill } from '../components/ui/Card.js'
@@ -17,7 +12,13 @@ import { useAsyncAction } from '../hooks/useAsyncAction.js'
 
 function StatusCell({ bell, lang }: { bell: TodayBell; lang: LanguageCode }): JSX.Element {
   const icon: IconName | null =
-    bell.status === 'done' ? 'check' : bell.status === 'next' ? 'arrowDown' : bell.status === 'skipped' ? 'minus' : null
+    bell.status === 'done'
+      ? 'check'
+      : bell.status === 'next'
+        ? 'arrowDown'
+        : bell.status === 'skipped'
+          ? 'minus'
+          : null
 
   return (
     <span className={`status-cell status-cell--${bell.status}`}>
@@ -27,15 +28,26 @@ function StatusCell({ bell, lang }: { bell: TodayBell; lang: LanguageCode }): JS
   )
 }
 
-export function DashboardPage({ lang, snapshot, now }: { lang: LanguageCode; snapshot: AppSnapshot; now: number }): JSX.Element {
+export function DashboardPage({
+  lang,
+  snapshot,
+  now
+}: {
+  lang: LanguageCode
+  snapshot: AppSnapshot
+  now: number
+}): JSX.Element {
   const { state } = snapshot
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(lang, key, params)
 
-  const view = useMemo(
-    () => buildTodayView(state, new Date(now), new Date(now)),
-    [state, Math.floor(now / 1000)]
-  )
+  // Second-resolution time drives the bell statuses, so this recomputes once a
+  // second rather than on every animation frame.
+  const second = Math.floor(now / 1000)
+  const view = useMemo(() => {
+    const date = new Date(second * 1000)
+    return buildTodayView(state, date, date)
+  }, [state, second])
   const nowDate = new Date(now)
   const mode = state.systemMode
   const nextBell = view.nextBell
@@ -162,19 +174,13 @@ export function DashboardPage({ lang, snapshot, now }: { lang: LanguageCode; sna
           icon="list"
           actions={
             view.todayBells.length > 0 ? (
-              <span className="badge">
-                {t('schedule.profileBells', { count: view.todayBells.length })}
-              </span>
+              <span className="badge">{t('schedule.profileBells', { count: view.todayBells.length })}</span>
             ) : null
           }
         />
         <CardBody flush>
           {view.todayBells.length === 0 ? (
-            <EmptyState
-              icon="bell"
-              title={t('dashboard.noBellsToday')}
-              hint={t('schedule.bellEmpty')}
-            />
+            <EmptyState icon="bell" title={t('dashboard.noBellsToday')} hint={t('schedule.bellEmpty')} />
           ) : (
             <div className="table-wrap">
               <table className="table">

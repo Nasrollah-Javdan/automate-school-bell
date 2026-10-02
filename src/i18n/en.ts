@@ -302,7 +302,8 @@ const en = {
   'settings.restoreDone': 'Backup imported',
   'settings.backupDone': 'Backup exported',
   'settings.resetSettings': 'Reset everything',
-  'settings.resetHint': 'Deletes all schedules, sounds, holidays and settings, then starts over with defaults.',
+  'settings.resetHint':
+    'Deletes all schedules, sounds, holidays and settings, then starts over with defaults.',
   'settings.resetConfirm': 'Reset all application data? This cannot be undone.',
   'settings.resetDone': 'Application data was reset',
   'settings.openDataFolder': 'Open data folder',

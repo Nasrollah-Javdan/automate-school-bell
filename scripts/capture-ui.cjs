@@ -1,6 +1,6 @@
 /**
- * Development only helper: renders the real interface with a mocked bridge and
- * captures screenshots, so the UI can be reviewed on any machine.
+ * Visual review helper: renders the interface with a mocked bridge and captures
+ * screenshots so the UI can be checked on any machine.
  *
  *   npm run capture
  *
@@ -12,32 +12,53 @@ const fs = require('node:fs')
 
 const OUT = path.join(__dirname, '..', 'screenshots')
 const RENDERER = path.join(__dirname, '..', 'out', 'renderer', 'index.html')
-const PRELOAD = path.join(__dirname, 'mock-preload.cjs')
+const PRELOAD = path.join(__dirname, 'capture-preload.cjs')
 
-const bells = [
-  { id: 'b1', time: '08:00', title: 'شروع مدرسه', soundId: null, enabled: true, note: '' },
-  { id: 'b2', time: '08:45', title: 'زنگ اول', soundId: null, enabled: true, note: '' },
-  { id: 'b3', time: '09:30', title: 'زنگ دوم', soundId: 'snd2', enabled: true, note: '' },
-  { id: 'b4', time: '10:15', title: 'زنگ تفریح', soundId: null, enabled: true, note: '' },
-  { id: 'b5', time: '11:00', title: 'زنگ سوم', soundId: null, enabled: false, note: 'مطالعه' }
-]
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Bells relative to "now" so the dashboard always shows realistic states. */
+/**
+ * Active days for the mock: every day except one, always including today, so
+ * the captured dashboard shows a normal school day.
+ */
+function activeDaysExceptToday() {
+  const today = (new Date().getDay() + 1) % 7
+  const excluded = (today + 1) % 7
+  return [0, 1, 2, 3, 4, 5, 6].filter((day) => day !== excluded)
+}
+
+function bellsAroundNow() {
+  const now = new Date()
+  const at = (minutesFromNow) => {
+    const date = new Date(now.getTime() + minutesFromNow * 60_000)
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+  return [
+    { id: 'b1', time: at(-95), title: 'شروع مدرسه', soundId: null, enabled: true, note: '' },
+    { id: 'b2', time: at(-50), title: 'زنگ اول', soundId: null, enabled: true, note: '' },
+    { id: 'b3', time: at(-5), title: 'زنگ دوم', soundId: 'snd2', enabled: true, note: '' },
+    { id: 'b4', time: at(25), title: 'زنگ تفریح', soundId: null, enabled: true, note: '' },
+    { id: 'b5', time: at(70), title: 'زنگ سوم', soundId: 'snd3', enabled: false, note: 'مطالعه' }
+  ]
+}
 
 const logs = [
-  { id: 'l1', at: Date.now() - 4000, level: 'success', code: 'log.bell.played', params: { title: 'زنگ دوم', time: '09:30' } },
+  { id: 'l1', at: Date.now() - 5000, level: 'success', code: 'log.bell.played', params: { title: 'زنگ دوم', time: '09:30' } },
   { id: 'l2', at: Date.now() - 30000, level: 'info', code: 'log.system.test', params: {} },
-  { id: 'l3', at: Date.now() - 120000, level: 'error', code: 'log.bell.playbackFailed', params: { title: 'زنگ اول', error: 'file not found' } },
+  { id: 'l3', at: Date.now() - 120000, level: 'error', code: 'log.bell.playbackFailed', params: { title: 'زنگ اول', error: 'دستگاه صوتی در دسترس نیست' } },
   { id: 'l4', at: Date.now() - 300000, level: 'warn', code: 'log.bell.missed', params: { title: 'زنگ تفریح', time: '10:15' } },
   { id: 'l5', at: Date.now() - 900000, level: 'info', code: 'log.schedule.switched', params: { name: 'برنامه عادی' } }
 ]
 
-function buildSnapshot({ language, theme, uiScale }) {
+function buildSnapshot({ language, theme, uiScale, mode = 'active' }) {
+  const bells = bellsAroundNow()
   const state = {
     version: 1,
     settings: {
       language,
       theme,
       uiScale,
-      startWithWindows: false,
+      startWithWindows: true,
       startMinimized: false,
       minimizeToTray: true,
       closeToTray: true,
@@ -48,26 +69,26 @@ function buildSnapshot({ language, theme, uiScale }) {
       activeScheduleId: 's1'
     },
     schedules: [
-      { id: 's1', name: 'برنامه عادی', bells, activeWeekdays: [0, 1, 2, 3, 4] },
+      { id: 's1', name: 'برنامه عادی', bells, activeWeekdays: activeDaysExceptToday() },
       { id: 's2', name: 'برنامه امتحانات', bells: bells.slice(0, 3), activeWeekdays: [0, 1, 2, 3] }
     ],
     activeScheduleId: 's1',
     sounds: [
       { id: 'snd1', name: 'زنگ پیش‌فرض', source: 'library', fileName: 'default-bell.wav', externalPath: null, volume: 100, durationSec: 3, createdAt: 0 },
       { id: 'snd2', name: 'زنگ مدرسه', source: 'library', fileName: 'school.mp3', externalPath: null, volume: 85, durationSec: 4, createdAt: 0 },
-      { id: 'snd3', name: 'D:\\sounds\\break.wav', source: 'external', fileName: null, externalPath: 'D:\\sounds\\break.wav', volume: 70, durationSec: 6, createdAt: 0 }
+      { id: 'snd3', name: 'زنگ تفریح', source: 'external', fileName: null, externalPath: 'D:\\sounds\\break.wav', volume: 70, durationSec: 6, createdAt: 0 }
     ],
     holidays: [
-      { id: 'h1', jalali: { year: 1405, month: 9, day: 2 }, title: 'تعطیلی مدرسه' },
-      { id: 'h2', jalali: { year: 1404, month: 7, day: 1 }, title: 'بازگشایی مدارس' }
+      { id: 'h1', jalali: { year: 1405, month: 7, day: 14 }, title: 'تعطیلی مدرسه' },
+      { id: 'h2', jalali: { year: 1405, month: 11, day: 2 }, title: 'بازگشایی مدارس' }
     ],
-    systemMode: 'active',
+    systemMode: mode,
     firedIds: []
   }
 
   return {
     state,
-    dayInfo: { kind: 'normal', holidayTitle: null, activeWeekdays: [0, 1, 2, 3, 4] },
+    dayInfo: { kind: 'normal', holidayTitle: null, activeWeekdays: activeDaysExceptToday() },
     todayBells: [],
     effectiveDark: theme === 'dark',
     appVersion: '1.0.0',
@@ -129,10 +150,6 @@ window.api = {
   )
 }
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const PAGES = ['dashboard', 'schedule', 'sounds', 'holidays', 'log', 'settings']
-
 async function capture(win, name) {
   const image = await win.webContents.capturePage()
   fs.writeFileSync(path.join(OUT, `${name}.png`), image.toPNG())
@@ -147,21 +164,19 @@ async function run() {
     height: 860,
     show: true,
     backgroundColor: '#f3f4f6',
-    webPreferences: {
-      preload: PRELOAD,
-      contextIsolation: false,
-      nodeIntegration: false,
-      sandbox: false
-    }
+    webPreferences: { preload: PRELOAD, contextIsolation: false, nodeIntegration: false, sandbox: false }
   })
 
   const variants = [
-    { suffix: 'fa-light', language: 'fa', theme: 'light', uiScale: 100, pages: PAGES },
-    { suffix: 'fa-dark', language: 'fa', theme: 'dark', uiScale: 100, pages: PAGES },
-    { suffix: 'en-light', language: 'en', theme: 'light', uiScale: 100, pages: ['dashboard', 'schedule', 'settings'] },
-    { suffix: 'fa-large', language: 'fa', theme: 'light', uiScale: 150, pages: ['dashboard', 'schedule'] },
-    { suffix: 'fa-narrow', language: 'fa', theme: 'light', uiScale: 100, pages: ['dashboard', 'schedule'], width: 1024, height: 700 }
+    { suffix: 'fa-light', language: 'fa', theme: 'light', uiScale: 100, pages: [0, 1, 2, 3, 4, 5] },
+    { suffix: 'fa-dark', language: 'fa', theme: 'dark', uiScale: 100, pages: [0, 1, 2, 4] },
+    { suffix: 'en-light', language: 'en', theme: 'light', uiScale: 100, pages: [0, 1, 5] },
+    { suffix: 'fa-large', language: 'fa', theme: 'light', uiScale: 150, pages: [0, 1] },
+    { suffix: 'fa-small', language: 'fa', theme: 'light', uiScale: 100, pages: [0], width: 1024, height: 700 },
+    { suffix: 'fa-paused', language: 'fa', theme: 'light', uiScale: 100, pages: [0], mode: 'paused' }
   ]
+
+  const names = ['dashboard', 'schedule', 'sounds', 'holidays', 'log', 'settings']
 
   for (const variant of variants) {
     writePreload(buildSnapshot(variant))
@@ -169,12 +184,10 @@ async function run() {
     await win.loadFile(RENDERER)
     await wait(1200)
 
-    for (let index = 0; index < variant.pages.length; index += 1) {
-      await win.webContents.executeJavaScript(
-        `document.querySelectorAll('.nav__item')[${index}].click(); undefined`
-      )
+    for (const index of variant.pages) {
+      await win.webContents.executeJavaScript(`document.querySelectorAll('.nav__item')[${index}].click(); undefined`)
       await wait(700)
-      await capture(win, `${variant.pages[index]}-${variant.suffix}`)
+      await capture(win, `${names[index]}-${variant.suffix}`)
     }
   }
 

@@ -41,7 +41,11 @@ class FakeStore {
 class FakeLog {
   entries: LogEntry[] = []
 
-  append(code: LogEntry['code'], level: LogEntry['level'], params: Record<string, string | number> = {}): LogEntry {
+  append(
+    code: LogEntry['code'],
+    level: LogEntry['level'],
+    params: Record<string, string | number> = {}
+  ): LogEntry {
     const entry: LogEntry = { id: `l${this.entries.length}`, at: Date.now(), level, code, params }
     this.entries.push(entry)
     return entry
@@ -114,9 +118,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
         id: 's1',
         name: 'Regular',
         activeWeekdays: [0, 1, 2, 3, 4, 5, 6],
-        bells: [
-          { id: 'b1', time: '09:30', title: 'First bell', soundId: null, enabled: true, note: '' }
-        ]
+        bells: [{ id: 'b1', time: '09:30', title: 'First bell', soundId: null, enabled: true, note: '' }]
       }
     ],
     activeScheduleId: 's1',
@@ -166,19 +168,14 @@ function harness(state: AppState, withSoundFile = true): Harness {
 
   let snapshots = 0
 
-  const engine = new SchedulerEngine(
-    store as unknown as AppStore,
-    log as unknown as LogStore,
-    audio,
-    {
-      getSoundsDir: () => '/sounds',
-      soundExists: (filePath: string) => Promise.resolve(files.has(filePath)),
-      onStateChanged: () => {
-        snapshots += 1
-      },
-      onToast: (toast) => toasts.push({ code: toast.code, params: toast.params })
-    }
-  )
+  const engine = new SchedulerEngine(store as unknown as AppStore, log as unknown as LogStore, audio, {
+    getSoundsDir: () => '/sounds',
+    soundExists: (filePath: string) => Promise.resolve(files.has(filePath)),
+    onStateChanged: () => {
+      snapshots += 1
+    },
+    onToast: (toast) => toasts.push({ code: toast.code, params: toast.params })
+  })
 
   return {
     engine,

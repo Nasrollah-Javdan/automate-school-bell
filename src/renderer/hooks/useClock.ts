@@ -9,7 +9,7 @@ const TICK_MS = 250
  * The renderer keeps its own time instead of polling the main process, so the
  * dashboard clock and countdown stay smooth even while a sound is playing.
  */
-export function useClock(): number {
+export function useClock(): void {
   useEffect(() => {
     const update = (): void => {
       if (document.visibilityState !== 'hidden') setNow(Date.now())
@@ -25,6 +25,4 @@ export function useClock(): number {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
-
-  return Date.now()
 }

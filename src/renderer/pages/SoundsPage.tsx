@@ -46,7 +46,11 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
           <Button variant="primary" icon="upload" onClick={() => runSafely(() => window.api.importSound())}>
             {t('sounds.import')}
           </Button>
-          <Button variant="outline" icon="link" onClick={() => runSafely(() => window.api.linkExternalSound())}>
+          <Button
+            variant="outline"
+            icon="link"
+            onClick={() => runSafely(() => window.api.linkExternalSound())}
+          >
             {t('sounds.link')}
           </Button>
         </div>
@@ -59,7 +63,9 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
             value={state.settings.defaultSoundId ?? ''}
             includeEmptyOption={t('sounds.defaultNone')}
             options={state.sounds.map((sound) => ({ value: sound.id, label: sound.name }))}
-            onValueChange={(value) => runSafely(() => window.api.setDefaultSound(value === '' ? null : value))}
+            onValueChange={(value) =>
+              runSafely(() => window.api.setDefaultSound(value === '' ? null : value))
+            }
             hint={t('sounds.volumeHint')}
           />
         </CardBody>
@@ -74,7 +80,11 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
               title={t('sounds.empty')}
               hint={t('sounds.emptyHint')}
               action={
-                <Button variant="primary" icon="upload" onClick={() => runSafely(() => window.api.importSound())}>
+                <Button
+                  variant="primary"
+                  icon="upload"
+                  onClick={() => runSafely(() => window.api.importSound())}
+                >
                   {t('sounds.import')}
                 </Button>
               }
@@ -99,7 +109,9 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
                       ) : null}
                     </div>
                     <div className="sound-row__meta">
-                      <span>{sound.source === 'library' ? t('sounds.sourceLibrary') : t('sounds.sourceExternal')}</span>
+                      <span>
+                        {sound.source === 'library' ? t('sounds.sourceLibrary') : t('sounds.sourceExternal')}
+                      </span>
                       {sound.durationSec ? <span>· {formatDuration(sound.durationSec, lang)}</span> : null}
                       <span>· {usage > 0 ? t('sounds.usedBy', { count: usage }) : t('sounds.unused')}</span>
                       {file?.available === false ? (
@@ -114,7 +126,9 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
                     <Slider
                       ariaLabel={`${t('sounds.volume')} — ${sound.name}`}
                       value={volumeOf(sound)}
-                      onCommit={(value) => runSafely(() => window.api.updateSound({ ...sound, volume: value }))}
+                      onCommit={(value) =>
+                        runSafely(() => window.api.updateSound({ ...sound, volume: value }))
+                      }
                     />
                   </div>
 
@@ -141,7 +155,12 @@ export function SoundsPage({ lang, snapshot }: { lang: LanguageCode; snapshot: A
 
                   <div className="btn-group">
                     {file?.available === false ? (
-                      <Button size="sm" variant="outline" icon="refresh" onClick={() => runSafely(() => window.api.relinkSound(sound.id))}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        icon="refresh"
+                        onClick={() => runSafely(() => window.api.relinkSound(sound.id))}
+                      >
                         {t('sounds.reselect')}
                       </Button>
                     ) : null}

@@ -24,5 +24,12 @@
       "@types": ["src/types/index.ts"]
     }
   },
-  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts", "src/i18n/**/*.ts", "src/types/**/*.ts", "src/utils/**/*.ts"]
+  "include": [
+    "src/renderer/**/*.ts",
+    "src/renderer/**/*.tsx",
+    "src/shared/**/*.ts",
+    "src/i18n/**/*.ts",
+    "src/types/**/*.ts",
+    "src/utils/**/*.ts"
+  ]
 }
