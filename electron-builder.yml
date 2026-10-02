@@ -58,6 +58,12 @@ linux:
       Name: DS School Bell
       Comment: School bell scheduling
       Categories: Utility;AudioVideo;Audio;
+  # Lets the desktop environment link the running window to its entry.
+  syncDesktopName: true
+  mimeTypes:
+    - audio/mpeg
+    - audio/wav
+    - audio/ogg
 
 # Builds are intentionally unsigned: a school can install without a code
 # signing certificate. Windows SmartScreen will ask once on first install.

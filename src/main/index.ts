@@ -36,9 +36,9 @@ async function bootstrap(): Promise<void> {
   const { store, recovered, notes, error, created } = await AppStore.load()
   const log = await LogStore.load()
 
-  if (recovered || error) {
-    console.warn('[startup] state file was recovered:', { recovered, notes, error })
-  }
+  // A missing state file is the normal first run, not a problem worth reporting.
+  if (recovered) console.warn('[startup] state file was repaired:', { notes, error })
+  if (error && !created) console.warn('[startup] state file problem:', error)
 
   const firstRun = created
 

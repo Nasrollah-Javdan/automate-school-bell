@@ -1,6 +1,7 @@
 {
   "name": "ds-school-bell",
   "version": "1.0.0",
+  "desktopName": "ds-school-bell.desktop",
   "productName": "DS School Bell",
   "description": "Simple, fast and reliable school bell scheduling system (Persian / English).",
   "author": {
