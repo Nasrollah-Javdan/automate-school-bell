@@ -9,6 +9,16 @@ import { app } from 'electron'
  */
 export const AUTOSTART_ARG = '--autostart'
 
+/**
+ * Name of the `HKEY_CURRENT_USER\...\Run` value this app owns.
+ *
+ * Electron defaults to `app.getName()`, but the installer writes the very same
+ * entry, so both spell it out explicitly to stay in step — otherwise Windows
+ * ends up with two auto-start entries and switching it off in the settings
+ * would not remove the one the installer created.
+ */
+export const AUTOSTART_ENTRY_NAME = app.getName()
+
 export function supportsAutoLaunch(): boolean {
   return app.isPackaged
 }
@@ -16,7 +26,10 @@ export function supportsAutoLaunch(): boolean {
 export function isAutoLaunchEnabled(): boolean {
   if (!app.isPackaged) return false
   try {
-    return app.getLoginItemSettings().openAtLogin
+    // On Windows this compares the Run entry against the given path and
+    // arguments, defaulting to *no* arguments. Reading it without `--autostart`
+    // would never match what setAutoLaunch wrote and would always report off.
+    return app.getLoginItemSettings({ path: process.execPath, args: [AUTOSTART_ARG] }).openAtLogin
   } catch {
     return false
   }
@@ -32,7 +45,8 @@ export function setAutoLaunch(enabled: boolean): AutoLaunchResult {
   try {
     app.setLoginItemSettings({
       openAtLogin: enabled,
-      args: enabled ? [AUTOSTART_ARG] : []
+      args: enabled ? [AUTOSTART_ARG] : [],
+      name: AUTOSTART_ENTRY_NAME
     })
     return { ok: true, error: null }
   } catch (error) {

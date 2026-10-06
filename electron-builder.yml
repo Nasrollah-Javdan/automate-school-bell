@@ -6,16 +6,37 @@ directories:
   output: release
   buildResources: resources
 
+# Pinned toolset versions. The modern bundles let us build Windows artifacts on
+# Linux and macOS without a system-wide Wine/NSIS install:
+#   wine        - portable Wine 11, runs rcedit/signtool on non-Windows hosts
+#   nsis        - unified makensis 3.12 bundle (plugins included)
+#   winCodeSign - modern rcedit + signtool bundle (Beta per upstream release notes)
+toolsets:
+  wine: '1.0.1'
+  nsis: '1.2.1'
+  winCodeSign: '1.1.0'
+
 files:
   - out/**/*
   - package.json
   - '!**/*.map'
   - '!**/{.eslintrc,.editorconfig,.prettierrc}'
 
-# The bundled bell tone is copied into the user's sounds folder on first run.
+# The tray icon and the window icon are loaded from disk at runtime, so they
+# have to sit next to the executable instead of inside the asar. Without this
+# both `nativeImage.createFromPath` calls return an empty image and the tray
+# icon is invisible in the packaged app.
 extraResources:
-  - from: resources/default-bell.wav
-    to: default-bell.wav
+  # The bundled bell tone is copied into the user's sounds folder on first run.
+  # Its name must stay in sync with DEFAULT_SOUND_FILE in src/shared/defaults.ts.
+  - from: resources/school-bell.mp3
+    to: school-bell.mp3
+  - from: resources/tray.png
+    to: tray.png
+  - from: resources/tray@2x.png
+    to: tray@2x.png
+  - from: resources/icon.png
+    to: icon.png
 
 win:
   target:

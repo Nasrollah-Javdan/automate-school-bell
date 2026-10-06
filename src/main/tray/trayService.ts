@@ -1,7 +1,7 @@
-import { join } from 'node:path'
 import { Menu, Tray, app, nativeImage } from 'electron'
 import type { LanguageCode, SystemMode } from '../../types/index.js'
 import { translate } from '../../i18n/index.js'
+import { trayHiDpiIconPath, trayIconPath } from '../system/iconPaths.js'
 
 export type TrayCommand = 'open' | 'toggle' | 'test' | 'exit'
 
@@ -28,10 +28,17 @@ export class TrayService {
   }
 
   private createImage(): Electron.NativeImage {
-    const image = nativeImage.createFromPath(join(__dirname, '../../resources/tray.png'))
-    if (image.isEmpty()) return image
-    const size = app.isPackaged || process.platform !== 'linux' ? 16 : 22
-    return image.resize({ width: size, height: size, quality: 'best' })
+    const candidates = app.isPackaged
+      ? [trayHiDpiIconPath(), trayIconPath()]
+      : [trayIconPath(), trayHiDpiIconPath()]
+    for (const candidate of candidates) {
+      const image = nativeImage.createFromPath(candidate)
+      if (!image.isEmpty()) return image
+    }
+    // Nothing readable: fall back to an empty image so the tray still exists and
+    // the user keeps the open / pause / exit menu instead of losing the app.
+    console.error('[tray] no tray icon could be loaded from', candidates)
+    return nativeImage.createEmpty()
   }
 
   /** Rebuild the menu so labels always match the current language and state. */

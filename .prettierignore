@@ -7,5 +7,5 @@ resources/icon.png
 resources/icon.ico
 resources/tray.png
 resources/tray@2x.png
-resources/default-bell.wav
+resources/school-bell.mp3
 src/renderer/styles/fonts/*.woff2

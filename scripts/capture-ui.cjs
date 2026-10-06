@@ -43,11 +43,35 @@ function bellsAroundNow() {
 }
 
 const logs = [
-  { id: 'l1', at: Date.now() - 5000, level: 'success', code: 'log.bell.played', params: { title: 'زنگ دوم', time: '09:30' } },
+  {
+    id: 'l1',
+    at: Date.now() - 5000,
+    level: 'success',
+    code: 'log.bell.played',
+    params: { title: 'زنگ دوم', time: '09:30' }
+  },
   { id: 'l2', at: Date.now() - 30000, level: 'info', code: 'log.system.test', params: {} },
-  { id: 'l3', at: Date.now() - 120000, level: 'error', code: 'log.bell.playbackFailed', params: { title: 'زنگ اول', error: 'دستگاه صوتی در دسترس نیست' } },
-  { id: 'l4', at: Date.now() - 300000, level: 'warn', code: 'log.bell.missed', params: { title: 'زنگ تفریح', time: '10:15' } },
-  { id: 'l5', at: Date.now() - 900000, level: 'info', code: 'log.schedule.switched', params: { name: 'برنامه عادی' } }
+  {
+    id: 'l3',
+    at: Date.now() - 120000,
+    level: 'error',
+    code: 'log.bell.playbackFailed',
+    params: { title: 'زنگ اول', error: 'دستگاه صوتی در دسترس نیست' }
+  },
+  {
+    id: 'l4',
+    at: Date.now() - 300000,
+    level: 'warn',
+    code: 'log.bell.missed',
+    params: { title: 'زنگ تفریح', time: '10:15' }
+  },
+  {
+    id: 'l5',
+    at: Date.now() - 900000,
+    level: 'info',
+    code: 'log.schedule.switched',
+    params: { name: 'برنامه عادی' }
+  }
 ]
 
 function buildSnapshot({ language, theme, uiScale, mode = 'active' }) {
@@ -74,13 +98,36 @@ function buildSnapshot({ language, theme, uiScale, mode = 'active' }) {
     ],
     activeScheduleId: 's1',
     sounds: [
-      { id: 'snd1', name: 'زنگ پیش‌فرض', source: 'library', fileName: 'default-bell.wav', externalPath: null, volume: 100, durationSec: 3, createdAt: 0 },
-      { id: 'snd2', name: 'زنگ مدرسه', source: 'library', fileName: 'school.mp3', externalPath: null, volume: 85, durationSec: 4, createdAt: 0 },
-      { id: 'snd3', name: 'زنگ تفریح', source: 'external', fileName: null, externalPath: 'D:\\sounds\\break.wav', volume: 70, durationSec: 6, createdAt: 0 }
-    ],
-    holidays: [
-      { id: 'h1', jalali: { year: 1405, month: 7, day: 14 }, title: 'تعطیلی مدرسه' },
-      { id: 'h2', jalali: { year: 1405, month: 11, day: 2 }, title: 'بازگشایی مدارس' }
+      {
+        id: 'snd1',
+        name: 'زنگ پیش‌فرض',
+        source: 'library',
+        fileName: 'school-bell.mp3',
+        externalPath: null,
+        volume: 100,
+        durationSec: 3,
+        createdAt: 0
+      },
+      {
+        id: 'snd2',
+        name: 'زنگ مدرسه',
+        source: 'library',
+        fileName: 'school.mp3',
+        externalPath: null,
+        volume: 85,
+        durationSec: 4,
+        createdAt: 0
+      },
+      {
+        id: 'snd3',
+        name: 'زنگ تفریح',
+        source: 'external',
+        fileName: null,
+        externalPath: 'D:\\sounds\\break.wav',
+        volume: 70,
+        durationSec: 6,
+        createdAt: 0
+      }
     ],
     systemMode: mode,
     firedIds: []
@@ -88,14 +135,14 @@ function buildSnapshot({ language, theme, uiScale, mode = 'active' }) {
 
   return {
     state,
-    dayInfo: { kind: 'normal', holidayTitle: null, activeWeekdays: activeDaysExceptToday() },
+    dayInfo: { kind: 'normal', activeWeekdays: activeDaysExceptToday() },
     todayBells: [],
     effectiveDark: theme === 'dark',
     appVersion: '1.0.0',
     soundsDir: 'C:\\Users\\school\\AppData\\Roaming\\DS School Bell\\sounds',
     dataDir: 'C:\\Users\\school\\AppData\\Roaming\\DS School Bell',
     soundFiles: {
-      snd1: { path: 'C:/sounds/default-bell.wav', available: true },
+      snd1: { path: 'C:/sounds/school-bell.mp3', available: true },
       snd2: { path: 'C:/sounds/school.mp3', available: true },
       snd3: { path: 'D:/sounds/break.wav', available: false }
     }
@@ -135,8 +182,6 @@ window.api = {
   updateSound: same,
   removeSound: same,
   setDefaultSound: same,
-  addHoliday: same,
-  removeHoliday: same,
   clearLogs: () => Promise.resolve(),
   backupToFile: ok,
   restoreFromFile: ok,
@@ -172,11 +217,19 @@ async function run() {
     { suffix: 'fa-dark', language: 'fa', theme: 'dark', uiScale: 100, pages: [0, 1, 2, 4] },
     { suffix: 'en-light', language: 'en', theme: 'light', uiScale: 100, pages: [0, 1, 5] },
     { suffix: 'fa-large', language: 'fa', theme: 'light', uiScale: 150, pages: [0, 1] },
-    { suffix: 'fa-small', language: 'fa', theme: 'light', uiScale: 100, pages: [0], width: 1024, height: 700 },
+    {
+      suffix: 'fa-small',
+      language: 'fa',
+      theme: 'light',
+      uiScale: 100,
+      pages: [0],
+      width: 1024,
+      height: 700
+    },
     { suffix: 'fa-paused', language: 'fa', theme: 'light', uiScale: 100, pages: [0], mode: 'paused' }
   ]
 
-  const names = ['dashboard', 'schedule', 'sounds', 'holidays', 'log', 'settings']
+  const names = ['dashboard', 'schedule', 'sounds', 'log', 'settings']
 
   for (const variant of variants) {
     writePreload(buildSnapshot(variant))
@@ -185,7 +238,9 @@ async function run() {
     await wait(1200)
 
     for (const index of variant.pages) {
-      await win.webContents.executeJavaScript(`document.querySelectorAll('.nav__item')[${index}].click(); undefined`)
+      await win.webContents.executeJavaScript(
+        `document.querySelectorAll('.nav__item')[${index}].click(); undefined`
+      )
       await wait(700)
       await capture(win, `${names[index]}-${variant.suffix}`)
     }

@@ -5,8 +5,6 @@ import { app } from 'electron'
 import type {
   AppState,
   Bell,
-  Holiday,
-  JalaliDate,
   LogLevel,
   ScheduleProfile,
   Settings,
@@ -18,7 +16,6 @@ import { AppError } from '../../shared/errors.js'
 import { createDefaultState } from '../../shared/defaults.js'
 import { sanitizeSettings } from '../../shared/validate.js'
 import { sortBells } from '../../shared/today.js'
-import { isValidJalaliDate, jalaliKey } from '../../utils/jalali.js'
 import { isValidTime } from '../../utils/time.js'
 import { createId } from '../../utils/id.js'
 import { allowLinkedPath, forgetLinkedPath } from '../audio/audioProtocol.js'
@@ -30,7 +27,7 @@ import {
 } from '../storage/soundLibrary.js'
 import { getSoundsDir } from '../storage/paths.js'
 import { isAutoLaunchEnabled, setAutoLaunch } from '../system/autoLaunch.js'
-import { DEFAULT_SOUND_FILE, defaultSound } from '../../shared/defaults.js'
+import { DEFAULT_SOUND_FILE, LEGACY_DEFAULT_SOUND_FILES, defaultSound } from '../../shared/defaults.js'
 import { ensureDir, fileExists } from '../storage/jsonFile.js'
 import type { AppServices } from './types.js'
 
@@ -410,36 +407,6 @@ export class StateService {
   }
 
   /* ---------------------------------------------------------------- *
-   * Holidays
-   * ---------------------------------------------------------------- */
-
-  addHoliday(input: { jalali: JalaliDate; title: string }): AppState {
-    if (!isValidJalaliDate(input.jalali)) throw new AppError('holidays.invalidDate')
-    const title = input.title.trim().slice(0, 120)
-    if (!title) throw new AppError('holidays.titleEmpty')
-    const key = jalaliKey(input.jalali)
-
-    const state = this.services.store.update((draft) => {
-      if (draft.holidays.some((holiday) => jalaliKey(holiday.jalali) === key)) {
-        throw new AppError('holidays.duplicate')
-      }
-      const holiday: Holiday = { id: createId('h'), jalali: input.jalali, title }
-      draft.holidays = [...draft.holidays, holiday].sort(compareHolidays)
-    })
-    this.services.log.append('log.holiday.added', 'info', { title })
-    return state
-  }
-
-  removeHoliday(id: string): AppState {
-    const holiday = this.services.store.get().holidays.find((item) => item.id === id)
-    const state = this.services.store.update((draft) => {
-      draft.holidays = draft.holidays.filter((item) => item.id !== id)
-    })
-    if (holiday) this.services.log.append('log.holiday.removed', 'info', { title: holiday.title })
-    return state
-  }
-
-  /* ---------------------------------------------------------------- *
    * Whole-state operations
    * ---------------------------------------------------------------- */
 
@@ -467,12 +434,16 @@ export class StateService {
    * It is copied into the user's sounds folder so the user can replace, back up
    * or delete it like any other sound. Packaged builds ship it in
    * `resources/` next to the app; in development it lives in the project.
+   *
+   * Runs on every start: it installs the file when it is missing and migrates
+   * entries left behind by older builds.
    */
   async ensureDefaultSoundFile(): Promise<void> {
+    await this.removeLegacyDefaultSounds()
+
     const state = this.services.store.get()
     const alreadyInstalled = state.sounds.some((sound) => sound.fileName === DEFAULT_SOUND_FILE)
     const target = join(getSoundsDir(), DEFAULT_SOUND_FILE)
-    if (alreadyInstalled && (await fileExists(target))) return
     if (await fileExists(target)) return
 
     const source = await findBundledSound()
@@ -491,13 +462,70 @@ export class StateService {
 
     // Only add it to the library when it is not registered yet.
     if (!alreadyInstalled) {
+      let addedId = ''
       this.services.store.update((draft) => {
         if (draft.sounds.some((sound) => sound.fileName === DEFAULT_SOUND_FILE)) return
         const sound = defaultSound(draft.settings.language)
         draft.sounds.unshift(sound)
         draft.settings.defaultSoundId = sound.id
+        addedId = sound.id
       })
+      if (addedId) void this.probeSoundDuration(addedId)
     }
+
+    // A fresh install already has the entry from the factory state, so its length
+    // is still the placeholder. Measure it now that the file is on disk.
+    this.probeDefaultSoundDuration()
+  }
+
+  /**
+   * Read the bundled tone's real length once per run, so the Sounds page never
+   * shows a guess. Only the default sound is touched, and only when its length
+   * is still unknown.
+   */
+  private probeDefaultSoundDuration(): void {
+    const sound = this.services.store.get().sounds.find((item) => item.fileName === DEFAULT_SOUND_FILE)
+    if (!sound) return
+    if (sound.durationSec !== null && sound.durationSec !== 0) return
+    void this.probeSoundDuration(sound.id)
+  }
+
+  /**
+   * Drop library entries that older builds installed as the default bell.
+   *
+   * They are recognised by name only, which is safe: a renamed or user-supplied
+   * sound keeps its own file name and is never removed here.
+   */
+  private async removeLegacyDefaultSounds(): Promise<void> {
+    const stale = this.services.store
+      .get()
+      .sounds.filter(
+        (sound) =>
+          sound.source === 'library' &&
+          sound.fileName !== null &&
+          (LEGACY_DEFAULT_SOUND_FILES as readonly string[]).includes(sound.fileName)
+      )
+    if (stale.length === 0) return
+
+    const ids = stale.map((sound) => sound.id)
+    this.services.store.update((draft) => {
+      draft.sounds = draft.sounds.filter((sound) => !ids.includes(sound.id))
+      for (const schedule of draft.schedules) {
+        for (const bell of schedule.bells) {
+          if (bell.soundId && ids.includes(bell.soundId)) bell.soundId = null
+        }
+      }
+      if (draft.settings.defaultSoundId && ids.includes(draft.settings.defaultSoundId)) {
+        draft.settings.defaultSoundId = draft.sounds[0]?.id ?? null
+      }
+    })
+
+    for (const sound of stale) {
+      if (sound.fileName) {
+        await rm(join(getSoundsDir(), sound.fileName), { force: true }).catch(() => undefined)
+      }
+    }
+    console.log('[audio] replaced an old default bell with the current one')
   }
 
   /* ---------------------------------------------------------------- *
@@ -524,10 +552,6 @@ export class StateService {
       note: bell.note.slice(0, 240)
     }
   }
-}
-
-function compareHolidays(a: Holiday, b: Holiday): number {
-  return a.jalali.year - b.jalali.year || a.jalali.month - b.jalali.month || a.jalali.day - b.jalali.day
 }
 
 function supportsAutoLaunchOnThisPlatform(): boolean {

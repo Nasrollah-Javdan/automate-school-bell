@@ -5,10 +5,16 @@ Generates the static application assets:
   resources/icon.png      512x512 app / installer icon
   resources/tray.png      32x32 system tray icon
   resources/icon.ico      multi size Windows icon
-  resources/default-bell.wav   3 second bell tone used out of the box
+  resources/fallback-bell.wav   optional synthesised bell, used only when
+                                resources/school-bell.mp3 is missing
+
+The shipped default bell tone is resources/school-bell.mp3, a real recording
+that is kept in the repository. It is deliberately NOT regenerated, so running
+this script can never change how the school bell sounds. The synthesised WAV
+below is only a last-resort fallback for a repository without the MP3.
 
 Everything is drawn/synthesised locally so the repository has no binary
-downloads and the assets can be regenerated at any time:
+downloads and the icons can be regenerated at any time:
 
     python3 scripts/generate-assets.py
 """
@@ -198,8 +204,9 @@ def main() -> None:
     draw_tray(64).save(os.path.join(RES, "tray@2x.png"))
     print("wrote resources/tray@2x.png (64x64)")
 
-    synth_bell(os.path.join(RES, "default-bell.wav"))
-    print("wrote resources/default-bell.wav (3s)")
+    # Only a fallback: the shipped default is the recorded MP3.
+    synth_bell(os.path.join(RES, "fallback-bell.wav"))
+    print("wrote resources/fallback-bell.wav (3s, fallback only)")
 
 
 if __name__ == "__main__":

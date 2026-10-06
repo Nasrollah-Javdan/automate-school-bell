@@ -8,8 +8,6 @@
 import type {
   AppState,
   Bell,
-  Holiday,
-  JalaliDate,
   LogCode,
   LogEntry,
   LogLevel,
@@ -23,7 +21,6 @@ import type {
   Weekday
 } from '../types/index.js'
 import { APP_STATE_VERSION } from '../types/index.js'
-import { isValidJalaliDate } from '../utils/jalali.js'
 import { isValidTime } from '../utils/time.js'
 import { createDefaultState, defaultSettings } from './defaults.js'
 
@@ -142,23 +139,6 @@ export function sanitizeSchedule(raw: unknown): ScheduleProfile | null {
   }
 }
 
-export function sanitizeHoliday(raw: unknown): Holiday | null {
-  if (!isRecord(raw)) return null
-  const source = isRecord(raw.jalali) ? raw.jalali : null
-  if (!source) return null
-  const jalali: JalaliDate = {
-    year: asNumber(source.year, 0),
-    month: asNumber(source.month, 0),
-    day: asNumber(source.day, 0)
-  }
-  if (!isValidJalaliDate(jalali)) return null
-  return {
-    id: asId(raw.id, 'h'),
-    jalali,
-    title: asString(raw.title).slice(0, 120).trim() || '—'
-  }
-}
-
 const FIRED_ID_PATTERN = /^\d{4}-\d{2}-\d{2}_\d{2}:\d{2}_[A-Za-z0-9_-]+$/
 const MAX_FIRED_IDS = 600
 
@@ -183,9 +163,6 @@ const LOG_CODES: readonly LogCode[] = [
   'log.schedule.created',
   'log.schedule.renamed',
   'log.schedule.deleted',
-  'log.holiday.skipped',
-  'log.holiday.added',
-  'log.holiday.removed',
   'log.sound.added',
   'log.sound.removed',
   'log.backup.created',
@@ -239,13 +216,12 @@ export function parseAppState(raw: unknown): ParseResult<AppState> {
   const sounds = (Array.isArray(raw.sounds) ? raw.sounds : [])
     .map(sanitizeSound)
     .filter((sound): sound is Sound => sound !== null)
-  const holidays = (Array.isArray(raw.holidays) ? raw.holidays : [])
-    .map(sanitizeHoliday)
-    .filter((holiday): holiday is Holiday => holiday !== null)
-    .sort(
-      (a, b) =>
-        a.jalali.year - b.jalali.year || a.jalali.month - b.jalali.month || a.jalali.day - b.jalali.day
-    )
+
+  // Older builds stored a holiday list. It is dropped on purpose: if a stale
+  // entry is left behind, `parseAppState` would have to carry it forever.
+  if (Array.isArray(raw.holidays) && raw.holidays.length > 0) {
+    notes.push('state: the removed holiday list was dropped')
+  }
 
   const soundIds = new Set(sounds.map((sound) => sound.id))
   if (settings.defaultSoundId && !soundIds.has(settings.defaultSoundId)) {
@@ -280,7 +256,6 @@ export function parseAppState(raw: unknown): ParseResult<AppState> {
     schedules,
     activeScheduleId,
     sounds,
-    holidays,
     systemMode: mode,
     firedIds
   }

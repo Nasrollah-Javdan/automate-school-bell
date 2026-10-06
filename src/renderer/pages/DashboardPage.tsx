@@ -68,11 +68,6 @@ export function DashboardPage({
         <div className="hero__top">
           <StatusPill mode={mode} lang={lang} size="lg" />
           <div className="day-summary">
-            {view.dayInfo.kind === 'holiday' ? (
-              <Badge tone="warn" icon="calendar">
-                {t('holidays.title')}
-              </Badge>
-            ) : null}
             {view.dayInfo.kind === 'inactiveWeekday' ? (
               <Badge tone="neutral" icon="calendar">
                 {t('schedule.todayNotInUse')}
@@ -158,13 +153,6 @@ export function DashboardPage({
 
         {mode === 'paused' ? <Notice tone="warn">{t('dashboard.hint.paused')}</Notice> : null}
         {mode === 'disabled' ? <Notice tone="warn">{t('dashboard.hint.disabled')}</Notice> : null}
-        {view.dayInfo.kind === 'holiday' ? (
-          <Notice tone="warn">
-            {view.dayInfo.holidayTitle
-              ? t('dashboard.hint.holidayNamed', { title: view.dayInfo.holidayTitle })
-              : t('dashboard.hint.holiday')}
-          </Notice>
-        ) : null}
         {view.dayInfo.kind === 'inactiveWeekday' ? <Notice>{t('dashboard.hint.inactiveDay')}</Notice> : null}
       </section>
 

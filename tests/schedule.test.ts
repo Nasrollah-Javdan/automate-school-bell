@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { AppState, Bell, Holiday, ScheduleProfile, Sound } from '../src/types/index.js'
-import { buildTodayView, findHoliday, nextBellOf, resolveDayPlan, sortBells } from '../src/shared/today.js'
+import type { AppState, Bell, ScheduleProfile, Sound } from '../src/types/index.js'
+import { buildTodayView, nextBellOf, resolveDayPlan, sortBells } from '../src/shared/today.js'
 import {
   bellOccurrenceId,
   formatClockTime,
@@ -28,7 +28,6 @@ const makeState = (partial: Partial<AppState> = {}): AppState => {
     activeWeekdays: [0, 1, 2, 3, 4]
   }
   const sounds: Sound[] = []
-  const holidays: Holiday[] = []
   return {
     version: 1,
     settings: {
@@ -48,7 +47,6 @@ const makeState = (partial: Partial<AppState> = {}): AppState => {
     schedules: [schedule],
     activeScheduleId: 's1',
     sounds,
-    holidays,
     systemMode: 'active',
     firedIds: [],
     ...partial
@@ -69,7 +67,6 @@ describe('day plan', () => {
     const plan = resolveDayPlan(makeState(), SUNDAY)
     expect(plan.weekdayActive).toBe(true)
     expect(plan.bells).toHaveLength(3)
-    expect(plan.holiday).toBeNull()
   })
 
   it('has no bells on an inactive weekday', () => {
@@ -83,15 +80,6 @@ describe('day plan', () => {
     state.schedules[0].bells[0].enabled = false
     const plan = resolveDayPlan(state, SUNDAY)
     expect(plan.bells.map((item) => item.id)).toEqual(['b2', 'b3'])
-  })
-
-  it('detects a holiday regardless of weekday', () => {
-    const state = makeState({
-      holidays: [{ id: 'h1', jalali: { year: 1405, month: 7, day: 5 }, title: 'Closed' }]
-    })
-    const plan = resolveDayPlan(state, SUNDAY)
-    expect(plan.holiday?.title).toBe('Closed')
-    expect(findHoliday(state, SUNDAY)?.id).toBe('h1')
   })
 
   it('finds the next upcoming bell', () => {
@@ -123,15 +111,6 @@ describe('today view', () => {
     const view = buildTodayView(makeState(), SUNDAY, new Date(2026, 8, 27, 23, 0, 0))
     expect(view.nextBell).toBeNull()
     expect(view.isDayOver).toBe(true)
-  })
-
-  it('reports holiday days', () => {
-    const state = makeState({
-      holidays: [{ id: 'h1', jalali: { year: 1405, month: 7, day: 5 }, title: 'Closed' }]
-    })
-    const view = buildTodayView(state, SUNDAY, new Date(2026, 8, 27, 9, 0, 0))
-    expect(view.dayInfo.kind).toBe('holiday')
-    expect(view.dayInfo.holidayTitle).toBe('Closed')
   })
 
   it('reports inactive weekdays', () => {

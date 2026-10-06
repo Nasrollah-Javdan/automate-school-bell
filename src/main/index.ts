@@ -1,8 +1,9 @@
-import { app, powerMonitor } from 'electron'
+import { app, powerMonitor, Notification } from 'electron'
 import { registerAudioProtocol, registerAudioSchemePrivileges } from './audio/audioProtocol.js'
 import { AudioService } from './audio/audioService.js'
 import { registerIpc } from './ipc/registerIpc.js'
 import { EV } from '../shared/channels.js'
+import { DEFAULT_LANGUAGE, translate } from '../i18n/index.js'
 import type { ToastPayload } from '../types/index.js'
 import { SchedulerEngine } from './scheduler/schedulerEngine.js'
 import { ensureDir, fileExists } from './storage/jsonFile.js'
@@ -132,6 +133,28 @@ function refresh(): void {
 function pushToast(toast: Omit<ToastPayload, 'id'>): void {
   const window = services?.windows.instance
   window?.webContents.send(EV.toast, { ...toast, id: makeToastId() })
+
+  // In tray mode the window is hidden, so a toast nobody sees is the same as no
+  // feedback at all. A bell that fails to play while the app sits in the tray
+  // must still tell somebody, so errors are mirrored as a system notification.
+  if (toast.level !== 'error' || !services) return
+  if (window && window.isVisible()) return
+  showSystemNotification(toast)
+}
+
+function showSystemNotification(toast: Omit<ToastPayload, 'id'>): void {
+  if (!Notification.isSupported()) return
+  try {
+    const lang = services?.store.get().settings.language ?? DEFAULT_LANGUAGE
+    const notification = new Notification({
+      title: app.getName(),
+      body: translate(lang, toast.code, toast.params)
+    })
+    notification.on('click', () => services?.windows.show())
+    notification.show()
+  } catch (error) {
+    console.error('[notify] could not show the system notification:', error)
+  }
 }
 
 async function handleTrayCommand(command: TrayCommand): Promise<void> {

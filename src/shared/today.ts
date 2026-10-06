@@ -5,8 +5,8 @@
  * module, so what the user sees is always exactly what the engine will do.
  */
 
-import type { AppState, Bell, DayInfo, Holiday, ScheduleProfile, TodayBell, Weekday } from '../types/index.js'
-import { isoDayKey, jalaliKey, todayJalali, weekdayIndex } from '../utils/jalali.js'
+import type { AppState, Bell, DayInfo, ScheduleProfile, TodayBell, Weekday } from '../types/index.js'
+import { isoDayKey, weekdayIndex } from '../utils/jalali.js'
 import { bellOccurrenceId, timeOnDate } from '../utils/time.js'
 
 export interface DayPlan {
@@ -18,18 +18,11 @@ export interface DayPlan {
   schedule: ScheduleProfile | null
   /** Enabled bells of the schedule, in time order. */
   bells: Bell[]
-  holiday: Holiday | null
   weekdayActive: boolean
 }
 
 export function findSchedule(state: AppState, id: string): ScheduleProfile | null {
   return state.schedules.find((schedule) => schedule.id === id) ?? null
-}
-
-/** Holiday defined for the given date (dates are stored in Jalali). */
-export function findHoliday(state: AppState, date: Date): Holiday | null {
-  const key = jalaliKey(todayJalali(date))
-  return state.holidays.find((holiday) => jalaliKey(holiday.jalali) === key) ?? null
 }
 
 /** Resolve everything the engine needs to know about one calendar day. */
@@ -45,7 +38,6 @@ export function resolveDayPlan(state: AppState, date: Date): DayPlan {
     weekday,
     schedule,
     bells: weekdayActive && schedule ? sortBells(schedule.bells.filter((bell) => bell.enabled)) : [],
-    holiday: findHoliday(state, date),
     weekdayActive
   }
 }
@@ -83,7 +75,7 @@ export interface TodayView {
 
 export function buildTodayView(state: AppState, date: Date, now: Date = date): TodayView {
   const plan = resolveDayPlan(state, date)
-  const kind: DayInfo['kind'] = plan.holiday ? 'holiday' : plan.weekdayActive ? 'normal' : 'inactiveWeekday'
+  const kind: DayInfo['kind'] = plan.weekdayActive ? 'normal' : 'inactiveWeekday'
 
   const nextBell = nextBellOf(plan, now)
   const nextTime = nextBell ? nextBell.time : null
@@ -111,7 +103,6 @@ export function buildTodayView(state: AppState, date: Date, now: Date = date): T
   return {
     dayInfo: {
       kind,
-      holidayTitle: plan.holiday?.title ?? null,
       activeWeekdays: plan.schedule?.activeWeekdays ?? []
     },
     todayBells,

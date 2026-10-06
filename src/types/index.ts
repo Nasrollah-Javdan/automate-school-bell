@@ -124,19 +124,12 @@ export interface AppState {
   schedules: ScheduleProfile[]
   activeScheduleId: string
   sounds: Sound[]
-  holidays: Holiday[]
   systemMode: SystemMode
   /**
    * Ids of already played bells, e.g. `2026-09-27_09:30_b1`.
    * Used to guarantee a bell never plays twice for the same occurrence.
    */
   firedIds: string[]
-}
-
-export interface Holiday {
-  id: string
-  jalali: JalaliDate
-  title: string
 }
 
 /* ------------------------------------------------------------------ *
@@ -155,9 +148,11 @@ export type LogCode =
   | 'log.bell.disabled'
   | 'log.bell.soundMissing'
   | 'log.bell.playbackFailed'
+  | 'log.bell.retrying'
   | 'log.bell.updated'
   | 'log.bell.added'
   | 'log.bell.removed'
+  | 'log.day.noBells'
   | 'log.system.activated'
   | 'log.system.paused'
   | 'log.system.disabled'
@@ -167,9 +162,6 @@ export type LogCode =
   | 'log.schedule.renamed'
   | 'log.schedule.deleted'
   | 'log.schedule.defaultChanged'
-  | 'log.holiday.skipped'
-  | 'log.holiday.added'
-  | 'log.holiday.removed'
   | 'log.sound.added'
   | 'log.sound.removed'
   | 'log.backup.created'
@@ -205,11 +197,10 @@ export interface TodayBell {
 }
 
 /** Extra information about the day, shown in the dashboard. */
-export type DayKind = 'normal' | 'holiday' | 'inactiveWeekday'
+export type DayKind = 'normal' | 'inactiveWeekday'
 
 export interface DayInfo {
   kind: DayKind
-  holidayTitle: string | null
   activeWeekdays: Weekday[]
 }
 
@@ -307,9 +298,6 @@ export interface MainApi {
   updateSound(sound: Sound): Promise<AppSnapshot>
   removeSound(soundId: string): Promise<AppSnapshot>
   setDefaultSound(soundId: string | null): Promise<AppSnapshot>
-
-  addHoliday(holiday: Omit<Holiday, 'id'>): Promise<AppSnapshot>
-  removeHoliday(id: string): Promise<AppSnapshot>
 
   getLogs(): Promise<LogEntry[]>
   clearLogs(): Promise<void>

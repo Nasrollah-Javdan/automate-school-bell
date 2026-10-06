@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { BrowserWindow, app, shell } from 'electron'
+import { appIconPath } from '../system/iconPaths.js'
 
 /**
  * The single user-facing window.
@@ -37,7 +38,7 @@ export class WindowManager {
       backgroundColor,
       autoHideMenuBar: true,
       title: 'DS School Bell',
-      icon: join(__dirname, '../../resources/icon.png'),
+      icon: appIconPath(),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         sandbox: true,

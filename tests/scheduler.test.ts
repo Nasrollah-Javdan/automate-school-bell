@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppState, LogEntry, Sound } from '../src/types/index.js'
-import type { AudioPlayer, PlayOptions } from '../src/shared/audioPlayer.js'
+import type { AudioPlayer, PlaybackBackend, PlayOptions } from '../src/shared/audioPlayer.js'
 import { AudioError } from '../src/shared/audioPlayer.js'
 import { SchedulerEngine } from '../src/main/scheduler/schedulerEngine.js'
 import type { AppStore } from '../src/main/storage/appStore.js'
@@ -58,12 +58,15 @@ class FakeLog {
 
 class FakeAudio implements AudioPlayer {
   played: PlayOptions[] = []
-  failNext = false
+  /** Fail the next `failTimes` attempts (or all of them when `failForever`). */
+  failTimes = 0
+  failForever = false
+  lastBackend: PlaybackBackend | null = 'embedded'
   stopped = 0
 
   async play(options: PlayOptions): Promise<void> {
-    if (this.failNext) {
-      this.failNext = false
+    if (this.failForever || this.failTimes > 0) {
+      if (!this.failForever) this.failTimes -= 1
       throw new AudioError('device is busy')
     }
     this.played.push(options)
@@ -123,7 +126,6 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     ],
     activeScheduleId: 's1',
     sounds: [SOUND],
-    holidays: [],
     systemMode: 'active',
     firedIds: [],
     ...overrides
@@ -295,6 +297,58 @@ describe('bell firing', () => {
     }
   })
 
+  it('rings every bell exactly once when several are due together', async () => {
+    // Regression: recording a fired id writes to the store, which used to notify
+    // the engine again and re-enter the scan, so the same bells rang repeatedly.
+    const state = makeState()
+    state.settings.missedBellPolicy = 'playIfRecent'
+    state.settings.missedGraceMinutes = 30
+    state.schedules[0].bells = [
+      { id: 'b1', time: '08:50', title: 'First', soundId: null, enabled: true, note: '' },
+      { id: 'b2', time: '08:55', title: 'Second', soundId: null, enabled: true, note: '' },
+      { id: 'b3', time: '09:00', title: 'Third', soundId: null, enabled: true, note: '' }
+    ]
+    const test = harness(state)
+    try {
+      // The clock reads 09:00, so all three bells are already due and still
+      // inside the 30 minute grace window.
+      await startEngine(test)
+
+      expect(test.audio.played).toHaveLength(3)
+      expect(test.log.codes().filter((code) => code === 'log.bell.played')).toHaveLength(3)
+      expect(test.store.get().firedIds).toHaveLength(3)
+    } finally {
+      test.restore()
+    }
+  })
+
+  it('does not ring a bell twice when many recalculations overlap', async () => {
+    const state = makeState()
+    state.settings.missedBellPolicy = 'playIfRecent'
+    state.settings.missedGraceMinutes = 30
+    state.schedules[0].bells = [
+      { id: 'b1', time: '08:50', title: 'First', soundId: null, enabled: true, note: '' },
+      { id: 'b2', time: '08:55', title: 'Second', soundId: null, enabled: true, note: '' }
+    ]
+    const test = harness(state)
+    try {
+      // A timer, a resume and a store write all landing together must collapse
+      // into a single pass over the due bells.
+      test.engine.start()
+      await Promise.all([
+        test.engine.recalculateAfterWake('resume'),
+        test.engine.recalculateAfterWake('manual'),
+        Promise.resolve(test.engine.recalculate())
+      ])
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(test.audio.played).toHaveLength(2)
+      expect(test.log.codes().filter((code) => code === 'log.bell.played')).toHaveLength(2)
+    } finally {
+      test.restore()
+    }
+  })
+
   it('reports a missing sound file without crashing', async () => {
     const test = harness(makeState(), false) // no file on disk
     try {
@@ -311,14 +365,33 @@ describe('bell firing', () => {
 
   it('logs a playback failure instead of throwing', async () => {
     const test = harness(makeState())
-    test.audio.failNext = true
+    // Every attempt must fail for the error to be reported at all.
+    test.audio.failForever = true
     try {
       test.engine.start()
-      await advanceMinutes(30)
+      await advanceMinutes(30 + 1) // cover the retries in between
 
       expect(test.log.codes()).toContain('log.bell.playbackFailed')
       // The engine keeps running and still holds the clock.
       expect(test.store.get().systemMode).toBe('active')
+    } finally {
+      test.restore()
+    }
+  })
+
+  it('retries a transient playback failure instead of losing the bell', async () => {
+    const test = harness(makeState())
+    // The audio device is busy for the first attempt only, which is what a
+    // waking sound card or a still-copying file looks like.
+    test.audio.failTimes = 1
+    try {
+      test.engine.start()
+      await advanceMinutes(30 + 1)
+
+      expect(test.log.codes()).toContain('log.bell.retrying')
+      expect(test.log.codes()).toContain('log.bell.played')
+      expect(test.log.codes()).not.toContain('log.bell.playbackFailed')
+      expect(test.audio.played).toHaveLength(1)
     } finally {
       test.restore()
     }
@@ -366,20 +439,6 @@ describe('bell firing', () => {
       await advanceMinutes(30)
 
       expect(test.audio.played[0].volume).toBeCloseTo(0.5 * 0.4, 5)
-    } finally {
-      test.restore()
-    }
-  })
-
-  it('does not ring bells on a holiday', async () => {
-    const state = makeState()
-    // 27 September 2026 → 5 Mehr 1405
-    state.holidays.push({ id: 'h1', jalali: { year: 1405, month: 7, day: 5 }, title: 'Closed' })
-    const test = harness(state)
-    try {
-      test.engine.start()
-      await advanceMinutes(30)
-      expect(test.audio.played).toHaveLength(0)
     } finally {
       test.restore()
     }

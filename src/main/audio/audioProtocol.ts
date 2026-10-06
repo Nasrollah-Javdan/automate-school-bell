@@ -136,11 +136,14 @@ export function forgetLinkedPath(filePath: string): void {
 function trustedRoots(): string[] {
   const roots = [getSoundsDir()]
 
-  // The bell tone that ships with the application.
-  const bundled = process.resourcesPath
-  if (bundled) roots.push(join(bundled, 'sounds'))
-  const appPath = app.getAppPath?.()
-  if (appPath) roots.push(join(appPath, 'resources'))
+  // The bell tone that ships with the application. In a packaged build the
+  // extra resources sit directly in `process.resourcesPath`; during development
+  // they live in the project's `resources` folder next to the asar.
+  if (app.isPackaged) {
+    if (process.resourcesPath) roots.push(process.resourcesPath)
+  } else {
+    roots.push(join(app.getAppPath(), 'resources'))
+  }
 
   return roots
 }

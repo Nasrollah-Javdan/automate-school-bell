@@ -16,7 +16,6 @@ const NAV: NavEntry[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
   { id: 'schedule', labelKey: 'nav.schedule', icon: 'list' },
   { id: 'sounds', labelKey: 'nav.sounds', icon: 'volume' },
-  { id: 'holidays', labelKey: 'nav.holidays', icon: 'calendar' },
   { id: 'log', labelKey: 'nav.log', icon: 'clock' },
   { id: 'settings', labelKey: 'nav.settings', icon: 'settings' }
 ]

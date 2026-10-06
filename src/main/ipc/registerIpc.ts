@@ -3,7 +3,6 @@ import type {
   AppSnapshot,
   AppState,
   Bell,
-  Holiday,
   IpcResult,
   LogEntry,
   Settings,
@@ -194,18 +193,6 @@ export function registerIpc(services: AppServices, state: StateService, system: 
   handle(
     CH.soundSetDefault,
     mutate((soundId: string | null) => state.setDefaultSound(soundId))
-  )
-
-  /* ---------------- holidays ---------------- */
-
-  handle(
-    CH.holidayAdd,
-    mutate((holiday: Omit<Holiday, 'id'>) => state.addHoliday(holiday))
-  )
-
-  handle(
-    CH.holidayRemove,
-    mutate((id: string) => state.removeHoliday(id))
   )
 
   /* ---------------- backup / reset ---------------- */

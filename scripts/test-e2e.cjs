@@ -22,6 +22,11 @@ const M = require(path.join(ROOT, 'out', 'test-harness', 'main.cjs'))
 
 const DATA_DIR = path.join(os.tmpdir(), 'ds-school-bell-e2e')
 
+// Every run must start from a clean slate. Without this the state file, the
+// activity log and the fired-bell ids survive between runs, so "first run"
+// assertions fail and the scheduler reports occurrences from previous runs.
+fs.rmSync(DATA_DIR, { recursive: true, force: true })
+
 app.setPath('userData', DATA_DIR)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-gpu')
@@ -123,7 +128,10 @@ async function main() {
   // Corrupt the file and make sure the backup is used instead of crashing.
   fs.writeFileSync(testFile, '{ this is not json')
   const recovered = await readJsonFile(testFile)
-  check('recovers from a corrupt file via the backup', recovered.recovered && recovered.value?.hello === 'world')
+  check(
+    'recovers from a corrupt file via the backup',
+    recovered.recovered && recovered.value?.hello === 'world'
+  )
 
   // Break both the file and its backup: the caller must get a clean null.
   fs.writeFileSync(testFile, 'not json at all')
@@ -184,9 +192,9 @@ async function main() {
   const audio = new AudioService()
   // Copy the bundled tone into the app sounds folder, exactly as the real
   // first run does, then play it from there.
-  const bundledSound = path.join(getSoundsDir(), 'default-bell.wav')
+  const bundledSound = path.join(getSoundsDir(), 'school-bell.mp3')
   fs.mkdirSync(getSoundsDir(), { recursive: true })
-  fs.copyFileSync(path.join(ROOT, 'resources', 'default-bell.wav'), bundledSound)
+  fs.copyFileSync(path.join(ROOT, 'resources', 'school-bell.mp3'), bundledSound)
 
   let playError = ''
   try {
@@ -266,7 +274,57 @@ async function main() {
 
   await stateService.ensureDefaultSoundFile()
   const soundsDir = getSoundsDir()
-  check('installs the default bell sound on first run', fs.existsSync(path.join(soundsDir, 'default-bell.wav')))
+  check(
+    'installs the default bell sound on first run',
+    fs.existsSync(path.join(soundsDir, 'school-bell.mp3'))
+  )
+
+  // The bundled tone must be a real, decodable audio file — a renamed or
+  // truncated asset would only be noticed on a school computer.
+  const defaultEntry = freshStore.get().sounds.find((item) => item.fileName === 'school-bell.mp3')
+  check('registers the default sound in the library', Boolean(defaultEntry))
+  const defaultDuration = defaultEntry ? await stateService.probeSoundDuration(defaultEntry.id) : null
+  check(
+    'measures the default sound from the real file',
+    typeof defaultDuration === 'number' && defaultDuration > 0,
+    `duration=${defaultDuration}`
+  )
+
+  // A second run must not duplicate the entry or touch the file again.
+  const soundCount = freshStore.get().sounds.length
+  await stateService.ensureDefaultSoundFile()
+  check('keeps a single default entry across restarts', freshStore.get().sounds.length === soundCount)
+
+  // An older build's default has to be migrated away, never left behind broken.
+  freshStore.update((draft) => {
+    draft.sounds.push({
+      id: 'snd_legacy',
+      name: 'old default',
+      source: 'library',
+      fileName: 'default-bell.wav',
+      externalPath: null,
+      volume: 100,
+      durationSec: 3,
+      createdAt: 0
+    })
+    draft.settings.defaultSoundId = 'snd_legacy'
+    draft.schedules.forEach((schedule) => {
+      schedule.bells.forEach((bell) => {
+        if (bell.soundId === 'snd_legacy') bell.soundId = null
+      })
+    })
+  })
+  fs.writeFileSync(path.join(soundsDir, 'default-bell.wav'), 'not really audio')
+  await stateService.ensureDefaultSoundFile()
+  check(
+    'migrates the previous default bell away',
+    !freshStore.get().sounds.some((item) => item.fileName === 'default-bell.wav')
+  )
+  check(
+    're-points the default sound at the current file',
+    freshStore.get().settings.defaultSoundId !== 'snd_legacy'
+  )
+  check('keeps the current default file untouched', fs.existsSync(path.join(soundsDir, 'school-bell.mp3')))
 
   // A bell one minute from now, on every day.
   const soon = new Date(Date.now() + 60_000)
@@ -337,7 +395,11 @@ async function main() {
   }
   await wait(1000)
   const playedAfter = freshLog.get().filter((entry) => entry.code === 'log.bell.played').length
-  check('does not replay a bell after recalculation', playedAfter === playedBefore, `${playedBefore} → ${playedAfter}`)
+  check(
+    'does not replay a bell after recalculation',
+    playedAfter === playedBefore,
+    `${playedBefore} → ${playedAfter}`
+  )
 
   scheduler.stop()
   realAudio.dispose()
@@ -345,7 +407,7 @@ async function main() {
   /* ---------------------------------------------------------------- *
    * Pause / disable
    * ---------------------------------------------------------------- */
-  section('Scheduler: pause, disable and holidays')
+  section('Scheduler: pause and disable')
 
   const paused = (await AppStore.load()).store
   paused.update((draft) => {
@@ -370,7 +432,17 @@ async function main() {
     }
   })
 
-  const pausedAudio = { played: [], async play(o) { this.played.push(o) }, stop() {}, async probe() { return 3 }, dispose() {} }
+  const pausedAudio = {
+    played: [],
+    async play(o) {
+      this.played.push(o)
+    },
+    stop() {},
+    async probe() {
+      return 3
+    },
+    dispose() {}
+  }
   const pausedLog = await LogStore.load()
   pausedLog.clear()
   const pausedScheduler = new SchedulerEngine(paused, pausedLog, pausedAudio, {
@@ -398,8 +470,10 @@ async function main() {
   check('backup contains settings', typeof backupPayload.state.settings.volume === 'number')
   check('backup contains the language', typeof backupPayload.state.settings.language === 'string')
   check('backup contains the theme', typeof backupPayload.state.settings.theme === 'string')
-  check('backup contains holidays', Array.isArray(backupPayload.state.holidays))
-  check('backup contains audio paths', backupPayload.state.sounds.every((s) => s.fileName || s.externalPath))
+  check(
+    'backup contains audio paths',
+    backupPayload.state.sounds.every((s) => s.fileName || s.externalPath)
+  )
 
   const backupFile = path.join(DATA_DIR, 'DS-SchoolBell-Backup.json')
   await writeBackupFile(backupFile, freshStore.get())
@@ -422,8 +496,16 @@ async function main() {
   section('Localization')
 
   const { translate, MESSAGES, directionOf } = M
-  check('has a Persian catalogue', Object.keys(MESSAGES.fa).length > 200, `${Object.keys(MESSAGES.fa).length} keys`)
-  check('has an English catalogue', Object.keys(MESSAGES.en).length > 200, `${Object.keys(MESSAGES.en).length} keys`)
+  check(
+    'has a Persian catalogue',
+    Object.keys(MESSAGES.fa).length > 200,
+    `${Object.keys(MESSAGES.fa).length} keys`
+  )
+  check(
+    'has an English catalogue',
+    Object.keys(MESSAGES.en).length > 200,
+    `${Object.keys(MESSAGES.en).length} keys`
+  )
   check(
     'both catalogues have identical keys',
     Object.keys(MESSAGES.fa).every((key) => key in MESSAGES.en) &&
@@ -433,7 +515,10 @@ async function main() {
   check('English is left-to-right', directionOf('en') === 'ltr')
   check('translates Persian', translate('fa', 'common.save') === 'ذخیره')
   check('translates English', translate('en', 'common.save') === 'Save')
-  check('interpolates and localises digits', translate('fa', 'schedule.profileBells', { count: 3 }) === '۳ زنگ')
+  check(
+    'interpolates and localises digits',
+    translate('fa', 'schedule.profileBells', { count: 3 }) === '۳ زنگ'
+  )
 
   /* ---------------------------------------------------------------- *
    * Window + security
@@ -447,7 +532,11 @@ async function main() {
 
   check('creates the main window', BrowserWindow.getAllWindows().includes(window))
   check('starts hidden when asked', !window.isVisible())
-  check('loads the interface', window.webContents.getURL().includes('index.html'), window.webContents.getURL())
+  check(
+    'loads the interface',
+    window.webContents.getURL().includes('index.html'),
+    window.webContents.getURL()
+  )
 
   const preloadPath = window.webContents.getURL()
   void preloadPath

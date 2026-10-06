@@ -10,7 +10,6 @@ import { useAppHotkeys } from './hooks/useAppHotkeys.js'
 import { DashboardPage } from './pages/DashboardPage.js'
 import { SchedulePage } from './pages/SchedulePage.js'
 import { SoundsPage } from './pages/SoundsPage.js'
-import { HolidaysPage } from './pages/HolidaysPage.js'
 import { LogPage } from './pages/LogPage.js'
 import { SettingsPage } from './pages/SettingsPage.js'
 
@@ -45,7 +44,6 @@ export function App(): JSX.Element {
       {page === 'dashboard' ? <DashboardPage lang={lang} snapshot={snapshot} now={now} /> : null}
       {page === 'schedule' ? <SchedulePage lang={lang} snapshot={snapshot} /> : null}
       {page === 'sounds' ? <SoundsPage lang={lang} snapshot={snapshot} /> : null}
-      {page === 'holidays' ? <HolidaysPage lang={lang} snapshot={snapshot} /> : null}
       {page === 'log' ? <LogPage lang={lang} logs={logs} /> : null}
       {page === 'settings' ? <SettingsPage lang={lang} snapshot={snapshot} /> : null}
       <ToastHost />

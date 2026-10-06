@@ -89,6 +89,22 @@ describe('state validation', () => {
     expect(() => parseAppState({ version: 999, settings: {} })).toThrow(ParseError)
   })
 
+  it('drops the holiday list left behind by older builds', () => {
+    // Real upgrades hit this: an existing state.json still carries `holidays`.
+    // It must be dropped without corrupting anything else, and without being
+    // reported as a recovery.
+    const legacy = {
+      ...createDefaultState('en'),
+      holidays: [{ id: 'h1', jalali: { year: 1405, month: 7, day: 5 }, title: 'Closed' }]
+    }
+    const parsed = parseAppState(legacy)
+
+    expect(parsed.recovered).toBe(false)
+    expect('holidays' in parsed.value).toBe(false)
+    expect(parsed.value.schedules).toHaveLength(1)
+    expect(parsed.notes.join(' ')).toMatch(/holiday/i)
+  })
+
   it('drops bells with an invalid time', () => {
     expect(sanitizeBell({ time: '99:99', title: 'x' })).toBeNull()
     expect(sanitizeBell({ time: '08:30', title: '  ' })?.title).toBe('—')

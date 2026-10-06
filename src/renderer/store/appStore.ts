@@ -3,7 +3,7 @@ import type { AppSnapshot, LanguageCode, LogEntry, ToastPayload } from '../../ty
 import type { MessageKey, MessageParams } from '../../i18n/index.js'
 import { DEFAULT_LANGUAGE } from '../../i18n/index.js'
 
-export type PageId = 'dashboard' | 'schedule' | 'sounds' | 'holidays' | 'log' | 'settings'
+export type PageId = 'dashboard' | 'schedule' | 'sounds' | 'log' | 'settings'
 
 export interface Toast {
   id: string

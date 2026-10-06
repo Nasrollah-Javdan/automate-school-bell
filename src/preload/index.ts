@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AppSnapshot,
   Bell,
-  Holiday,
   IpcResult,
   LogEntry,
   MainApi,
@@ -51,9 +50,6 @@ const api: MainApi = {
   updateSound: (sound: Sound) => invoke<AppSnapshot>(CH.soundUpdate, sound),
   removeSound: (soundId: string) => invoke<AppSnapshot>(CH.soundRemove, soundId),
   setDefaultSound: (soundId: string | null) => invoke<AppSnapshot>(CH.soundSetDefault, soundId),
-
-  addHoliday: (holiday: Omit<Holiday, 'id'>) => invoke<AppSnapshot>(CH.holidayAdd, holiday),
-  removeHoliday: (id: string) => invoke<AppSnapshot>(CH.holidayRemove, id),
 
   getLogs: () => invoke<LogEntry[]>(CH.logGet),
   clearLogs: () => invoke<void>(CH.logClear),

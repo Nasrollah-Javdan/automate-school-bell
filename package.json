@@ -24,6 +24,7 @@
     "test:watch": "vitest",
     "build": "npm run typecheck && electron-vite build",
     "build:win": "npm run build && electron-builder --win --config electron-builder.yml",
+    "build:win:all": "npm run build && electron-builder --win nsis portable --config electron-builder.yml",
     "build:win:portable": "npm run build && electron-builder --win portable --config electron-builder.yml",
     "build:linux": "npm run build && electron-builder --linux --config electron-builder.yml",
     "build:dir": "npm run build && electron-builder --dir --config electron-builder.yml",

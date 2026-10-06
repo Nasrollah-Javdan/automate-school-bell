@@ -13,12 +13,23 @@ export interface PlayOptions {
   volume: number
 }
 
+/**
+ * Which engine actually produced the sound.
+ *
+ * `native` is Windows' own player, `embedded` is Chromium in a hidden window.
+ * Recorded in the activity log so a report of "the bell did not ring" can be
+ * traced to a specific backend.
+ */
+export type PlaybackBackend = 'native' | 'embedded'
+
 export interface AudioPlayer {
   play(options: PlayOptions): Promise<void>
   stop(): void
   /** Read the duration of a file, or null when it cannot be determined. */
   probe(filePath: string): Promise<number | null>
   dispose(): void
+  /** Backend that played the last sound, when the player tracks it. */
+  readonly lastBackend?: PlaybackBackend | null
 }
 
 export class AudioError extends Error {

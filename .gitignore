@@ -3,6 +3,7 @@ node_modules/
 out/
 dist/
 release/
+release.zip
 
 # Tooling caches
 .vite/
@@ -19,3 +20,9 @@ scripts/mock-preload.cjs
 *.log
 .DS_Store
 Thumbs.db
+
+# Scratch audio files dropped in the project root. The bell that ships with the
+# app lives in resources/school-bell.mp3; anything sitting next to package.json
+# is a working copy and must not be committed.
+/bell 1.mp3
+/*.mp3

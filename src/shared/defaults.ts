@@ -12,8 +12,22 @@ import { translate } from '../i18n/index.js'
 import { createId } from '../utils/id.js'
 import { DEFAULT_ACTIVE_WEEKDAYS } from '../utils/time.js'
 
-/** File name of the bundled default bell tone, copied into the library on first run. */
-export const DEFAULT_SOUND_FILE = 'default-bell.wav'
+/**
+ * File name of the bundled default bell tone, copied into the library on
+ * first run. Changing it migrates existing installations — see
+ * {@link LEGACY_DEFAULT_SOUND_FILES}.
+ */
+export const DEFAULT_SOUND_FILE = 'school-bell.mp3'
+
+/**
+ * Names earlier builds installed into the sounds folder.
+ *
+ * On startup these entries are dropped from the library (and their files
+ * removed), because the app installed them itself and the user never edited
+ * them. Renaming or deleting a user sound is never touched: only these exact
+ * names, which the application owns.
+ */
+export const LEGACY_DEFAULT_SOUND_FILES = ['default-bell.wav'] as const
 
 export const DEFAULT_VOLUME = 80
 
@@ -71,7 +85,8 @@ export function defaultSound(lang: LanguageCode): Sound {
     fileName: DEFAULT_SOUND_FILE,
     externalPath: null,
     volume: 100,
-    durationSec: 3,
+    // Measured from the file on first run; `null` means "not read yet".
+    durationSec: null,
     createdAt: 0
   }
 }
@@ -88,7 +103,6 @@ export function createDefaultState(lang: LanguageCode = 'fa'): AppState {
     schedules: [schedule],
     activeScheduleId: schedule.id,
     sounds: [sound],
-    holidays: [],
     systemMode: 'active',
     firedIds: []
   }

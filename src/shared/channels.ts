@@ -29,9 +29,6 @@ export const CH = {
   soundRemove: 'sound.remove',
   soundSetDefault: 'sound.setDefault',
 
-  holidayAdd: 'holiday.add',
-  holidayRemove: 'holiday.remove',
-
   logGet: 'log.get',
   logClear: 'log.clear',
 

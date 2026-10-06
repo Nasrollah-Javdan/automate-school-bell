@@ -1,7 +1,8 @@
-import { BrowserWindow, app } from 'electron'
-import type { AudioPlayer } from '../../shared/audioPlayer.js'
+import { BrowserWindow } from 'electron'
+import type { AudioPlayer, PlaybackBackend } from '../../shared/audioPlayer.js'
 import { AudioError } from '../../shared/audioPlayer.js'
 import { audioSrcFor } from '../../shared/audioTypes.js'
+import { isNativePlaybackSupported, playNativeSound, stopNativeSound } from './nativePlayer.js'
 
 const START_TIMEOUT_MS = 8000
 const PROBE_TIMEOUT_MS = 8000
@@ -72,9 +73,14 @@ const HOST_SCRIPT = `
 `
 
 /**
- * Plays audio in a dedicated hidden window.
+ * Plays audio, choosing the most reliable backend available.
  *
- * Isolating playback there means bell sounds keep working even when the user
+ * On Windows the native Windows player is tried first and the embedded
+ * Chromium window is the fallback. Everywhere else (and for reading a file's
+ * duration) the hidden window is the only backend, because it needs Chromium's
+ * decoders.
+ *
+ * Isolating playback in a hidden window keeps bells working even when the user
  * interface is hidden, slow or being rebuilt — the bell engine never depends on
  * a visible window.
  */
@@ -84,6 +90,12 @@ export class AudioService implements AudioPlayer {
   private pending = new Map<string, Promise<void>>()
   private counter = 0
   private disposed = false
+  /** Which backend played the last sound; surfaced in the activity log. */
+  private backend: PlaybackBackend | null = null
+
+  get lastBackend(): PlaybackBackend | null {
+    return this.backend
+  }
 
   /** Create the playback window and inject the audio controller (idempotent). */
   ensureStarted(): Promise<void> {
@@ -141,19 +153,42 @@ export class AudioService implements AudioPlayer {
 
   /** Play a file. Resolves as soon as playback has actually started. */
   async play(options: { filePath: string; volume: number }): Promise<void> {
+    if (this.disposed) throw new AudioError('audio service is disposed')
+
+    // Windows' own player first: it is not part of Chromium, so it keeps
+    // working when the hidden window goes quiet.
+    if (isNativePlaybackSupported()) {
+      try {
+        await playNativeSound(options.filePath, options.volume)
+        this.backend = 'native'
+        return
+      } catch (error) {
+        console.error(
+          '[audio] falling back to the embedded player:',
+          error instanceof Error ? error.message : String(error)
+        )
+      }
+    }
+
+    await this.playEmbedded(options.filePath, options.volume)
+    this.backend = 'embedded'
+  }
+
+  private async playEmbedded(filePath: string, volume: number): Promise<void> {
     await this.ensureStarted()
     const window = this.window
     if (!window) throw new AudioError('the audio window is not available')
 
-    const src = audioSrcFor(options.filePath)
+    const src = audioSrcFor(filePath)
     await this.invoke(
-      `window.__bellHost.play(${JSON.stringify(src)}, ${Number(options.volume) || 0})`,
+      `window.__bellHost.play(${JSON.stringify(src)}, ${Number(volume) || 0})`,
       START_TIMEOUT_MS,
       'the sound did not start in time'
     )
   }
 
   stop(): void {
+    stopNativeSound()
     const window = this.window
     if (!window) return
     this.pending.clear()
@@ -222,10 +257,9 @@ export class AudioService implements AudioPlayer {
   dispose(): void {
     this.disposed = true
     this.failAll(new AudioError('audio service stopped'))
+    stopNativeSound()
     if (this.window && !this.window.isDestroyed()) this.window.destroy()
     this.window = null
     this.readyPromise = null
   }
 }
-
-void app
