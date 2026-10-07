@@ -1,32 +1,12 @@
-import { copyFile } from 'node:fs/promises'
+import { copyFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { rm } from 'node:fs/promises'
 import { app } from 'electron'
-import type {
-  AppState,
-  Bell,
-  LogLevel,
-  ScheduleProfile,
-  Settings,
-  Sound,
-  SystemMode,
-  Weekday
-} from '../../types/index.js'
+import type { AppState, Bell, LogLevel, ScheduleProfile, SystemMode, Weekday } from '../../types/index.js'
 import { AppError } from '../../shared/errors.js'
-import { createDefaultState } from '../../shared/defaults.js'
-import { sanitizeSettings } from '../../shared/validate.js'
 import { sortBells } from '../../shared/today.js'
 import { isValidTime } from '../../utils/time.js'
 import { createId } from '../../utils/id.js'
-import { allowLinkedPath, forgetLinkedPath } from '../audio/audioProtocol.js'
-import {
-  isSupportedSoundFile,
-  soundFilePath,
-  importSoundFile,
-  removeSoundFile
-} from '../storage/soundLibrary.js'
 import { getSoundsDir } from '../storage/paths.js'
-import { isAutoLaunchEnabled, setAutoLaunch } from '../system/autoLaunch.js'
 import { DEFAULT_SOUND_FILE, LEGACY_DEFAULT_SOUND_FILES, defaultSound } from '../../shared/defaults.js'
 import { ensureDir, fileExists } from '../storage/jsonFile.js'
 import type { AppServices } from './types.js'
@@ -46,45 +26,8 @@ export class StateService {
   constructor(private readonly services: AppServices) {}
 
   /* ---------------------------------------------------------------- *
-   * Settings
+   * System mode
    * ---------------------------------------------------------------- */
-
-  updateSettings(patch: Partial<Settings>): AppState {
-    const current = this.services.store.get()
-
-    // Start-with-Windows is a Windows registry setting, not just a preference.
-    let startWithWindows = current.settings.startWithWindows
-    if (patch.startWithWindows !== undefined && supportsAutoLaunchOnThisPlatform()) {
-      const result = setAutoLaunch(patch.startWithWindows)
-      if (result.ok) {
-        startWithWindows = patch.startWithWindows
-      } else {
-        const message = result.error ?? 'unknown error'
-        this.services.toast({
-          level: 'warn',
-          code: 'settings.startupUnavailable',
-          params: { error: message }
-        })
-        startWithWindows = isAutoLaunchEnabled()
-      }
-    }
-
-    const next = sanitizeSettings(
-      { ...current.settings, ...patch, startWithWindows },
-      current.settings.language
-    )
-    this.services.theme.apply(next.theme)
-
-    const interesting =
-      next.language !== current.settings.language ||
-      next.theme !== current.settings.theme ||
-      next.startWithWindows !== current.settings.startWithWindows
-    if (interesting) this.services.log.append('log.settings.updated', 'info')
-
-    return this.services.store.update((draft) => {
-      draft.settings = next
-    })
-  }
 
   setSystemMode(mode: SystemMode): AppState {
     if (!SYSTEM_MODES.includes(mode)) throw new AppError('common.error')
@@ -255,178 +198,8 @@ export class StateService {
   }
 
   /* ---------------------------------------------------------------- *
-   * Sounds
+   * Default bell tone
    * ---------------------------------------------------------------- */
-
-  /** Copy a file into the app folder (most reliable option). */
-  async addSoundFromFile(sourcePath: string, mode: 'import' | 'link'): Promise<AppState> {
-    if (!isSupportedSoundFile(sourcePath)) throw new AppError('sounds.invalidFormat')
-
-    let sound: Sound
-    try {
-      if (mode === 'import') {
-        const imported = await importSoundFile(sourcePath, getSoundsDir())
-        sound = {
-          id: createId('snd'),
-          name: imported.name,
-          source: 'library',
-          fileName: imported.fileName,
-          externalPath: null,
-          volume: 100,
-          durationSec: null,
-          createdAt: Date.now()
-        }
-      } else {
-        allowLinkedPath(sourcePath)
-        sound = {
-          id: createId('snd'),
-          name:
-            sourcePath
-              .split(/[\\/]/)
-              .pop()
-              ?.replace(/\.[^.]+$/, '') ?? 'sound',
-          source: 'external',
-          fileName: null,
-          externalPath: sourcePath,
-          volume: 100,
-          durationSec: null,
-          createdAt: Date.now()
-        }
-      }
-    } catch (error) {
-      throw new AppError('sounds.importFailed', {
-        error: error instanceof Error ? error.message : String(error)
-      })
-    }
-
-    this.services.store.update((draft) => {
-      draft.sounds.push(sound)
-    })
-    this.services.log.append('log.sound.added', 'info', { name: sound.name })
-    void this.probeSoundDuration(sound.id)
-    return this.services.store.get()
-  }
-
-  /** Point an existing sound at a new file (repair for moved/deleted files). */
-  async relinkSound(soundId: string, sourcePath: string): Promise<AppState> {
-    if (!isSupportedSoundFile(sourcePath)) throw new AppError('sounds.invalidFormat')
-    const previous = this.services.store.get().sounds.find((sound) => sound.id === soundId)
-    if (!previous) throw new AppError('common.unknown')
-
-    let imported: { fileName: string; name: string }
-    try {
-      imported = await importSoundFile(sourcePath, getSoundsDir())
-    } catch (error) {
-      throw new AppError('sounds.importFailed', {
-        error: error instanceof Error ? error.message : String(error)
-      })
-    }
-
-    const state = this.services.store.update((draft) => {
-      const target = draft.sounds.find((sound) => sound.id === soundId)
-      if (!target) throw new AppError('common.unknown')
-      target.source = 'library'
-      target.fileName = imported.fileName
-      target.externalPath = null
-      target.name = imported.name
-    })
-
-    // Remove the copy that is no longer referenced.
-    await removeSoundFile(previous, getSoundsDir()).catch(() => undefined)
-    if (previous.source === 'external' && previous.externalPath) forgetLinkedPath(previous.externalPath)
-    void this.probeSoundDuration(soundId)
-    return state
-  }
-
-  updateSound(sound: Sound): AppState {
-    return this.services.store.update((draft) => {
-      const index = draft.sounds.findIndex((item) => item.id === sound.id)
-      if (index === -1) throw new AppError('common.unknown')
-      const current = draft.sounds[index]
-      if (!current) throw new AppError('common.unknown')
-      draft.sounds[index] = {
-        ...current,
-        name: sound.name.trim().slice(0, 80) || current.name,
-        volume: Math.max(0, Math.min(100, Math.round(sound.volume)))
-      }
-    })
-  }
-
-  async removeSound(soundId: string): Promise<AppState> {
-    const soundsDir = getSoundsDir()
-    const sound = this.services.store.get().sounds.find((item) => item.id === soundId)
-    if (!sound) throw new AppError('common.unknown')
-
-    const state = this.services.store.update((draft) => {
-      draft.sounds = draft.sounds.filter((item) => item.id !== soundId)
-      for (const schedule of draft.schedules) {
-        for (const bell of schedule.bells) {
-          if (bell.soundId === soundId) bell.soundId = null
-        }
-      }
-      if (draft.settings.defaultSoundId === soundId) {
-        draft.settings.defaultSoundId = draft.sounds[0]?.id ?? null
-      }
-    })
-
-    try {
-      await removeSoundFile(sound, soundsDir)
-    } catch (error) {
-      console.error('[sounds] could not delete file:', error)
-    }
-    if (sound.source === 'external' && sound.externalPath) forgetLinkedPath(sound.externalPath)
-
-    this.services.log.append('log.sound.removed', 'info', { name: sound.name })
-    return state
-  }
-
-  setDefaultSound(soundId: string | null): AppState {
-    return this.services.store.update((draft) => {
-      if (soundId && !draft.sounds.some((sound) => sound.id === soundId)) throw new AppError('common.unknown')
-      draft.settings.defaultSoundId = soundId
-    })
-  }
-
-  async probeSoundDuration(soundId: string): Promise<number | null> {
-    const sound = this.services.store.get().sounds.find((item) => item.id === soundId)
-    if (!sound) return null
-    try {
-      const durationSec = await this.services.audio.probe(soundFilePath(sound, getSoundsDir()))
-      this.services.store.update((draft) => {
-        const target = draft.sounds.find((item) => item.id === soundId)
-        if (target) target.durationSec = durationSec
-      })
-      return durationSec
-    } catch {
-      this.services.store.update((draft) => {
-        const target = draft.sounds.find((item) => item.id === soundId)
-        if (target) target.durationSec = null
-      })
-      return null
-    }
-  }
-
-  /* ---------------------------------------------------------------- *
-   * Whole-state operations
-   * ---------------------------------------------------------------- */
-
-  /** Used by "import backup" and "reset". */
-  replaceState(state: AppState, code: 'log.backup.restored' | 'log.app.reset'): AppState {
-    const next = this.services.store.replace(state)
-    this.services.log.clear()
-    this.services.log.append(code, 'success')
-    this.services.theme.apply(next.settings.theme)
-    this.services.scheduler.recalculate()
-    return next
-  }
-
-  /** Delete everything and start over with the factory defaults. */
-  async resetAll(): Promise<AppState> {
-    const soundsDir = getSoundsDir()
-    await rm(soundsDir, { recursive: true, force: true }).catch(() => undefined)
-    this.services.log.clear()
-    return this.replaceState(createDefaultState(this.services.store.get().settings.language), 'log.app.reset')
-  }
 
   /**
    * Make sure the bundled default bell tone is available.
@@ -462,32 +235,13 @@ export class StateService {
 
     // Only add it to the library when it is not registered yet.
     if (!alreadyInstalled) {
-      let addedId = ''
       this.services.store.update((draft) => {
         if (draft.sounds.some((sound) => sound.fileName === DEFAULT_SOUND_FILE)) return
         const sound = defaultSound(draft.settings.language)
         draft.sounds.unshift(sound)
         draft.settings.defaultSoundId = sound.id
-        addedId = sound.id
       })
-      if (addedId) void this.probeSoundDuration(addedId)
     }
-
-    // A fresh install already has the entry from the factory state, so its length
-    // is still the placeholder. Measure it now that the file is on disk.
-    this.probeDefaultSoundDuration()
-  }
-
-  /**
-   * Read the bundled tone's real length once per run, so the Sounds page never
-   * shows a guess. Only the default sound is touched, and only when its length
-   * is still unknown.
-   */
-  private probeDefaultSoundDuration(): void {
-    const sound = this.services.store.get().sounds.find((item) => item.fileName === DEFAULT_SOUND_FILE)
-    if (!sound) return
-    if (sound.durationSec !== null && sound.durationSec !== 0) return
-    void this.probeSoundDuration(sound.id)
   }
 
   /**
@@ -552,10 +306,6 @@ export class StateService {
       note: bell.note.slice(0, 240)
     }
   }
-}
-
-function supportsAutoLaunchOnThisPlatform(): boolean {
-  return process.platform === 'win32' || process.platform === 'darwin'
 }
 
 /**

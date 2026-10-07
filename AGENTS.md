@@ -93,8 +93,10 @@ Timer → SchedulerEngine → AudioService.play() → Windows MediaPlayer → ب
 - مهاجرت فایل‌های قدیمی فقط از راه `LEGACY_DEFAULT_SOUND_FILES` انجام می‌شود و
   **فقط بر اساس نام**. هرگز فایل صوتی کاربر را بر اساس حدس حذف نکن.
 - فایل خارجی (`source: 'external'`) هرگز حذف نمی‌شود؛ فقط پیوندش پاک می‌شود.
-- مدت فایل پیش‌فرض در اولین اجرا از خود فایل خوانده و ذخیره می‌شود
-  (`durationSec`). عدد ثابت نگذار؛ `SoundsPage` همان را نشان می‌دهد.
+- کتابخانه صدا دیگر صفحه‌ی مدیریت ندارد (بخش ۳.۳). تنها راه اضافه کردن صدا،
+  کپی خودکار `school-bell.mp3` در اولین اجراست. `durationSec` در مدل داده
+  باقی مانده ولی دیگر جایی نمایش داده نمی‌شود؛ چیزی را به آن اضافه نکن مگر
+  واقعاً لازم باشد.
 
 ### ۲.۶ ساختار فایل‌ها بیرون از asar لازم است
 
@@ -165,6 +167,39 @@ Timer → SchedulerEngine → AudioService.play() → Windows MediaPlayer → ب
 چند تابع، ریسک بی‌دلیل تولید می‌کند. اگر روزی خواستی حذفشان کنی، تست‌های
 `tests/jalali.test.ts` را هم با هم حذف کن.
 
+### ۳.۳ بخش‌های «تنظیمات»، «گزارش فعالیت» و «صداها» حذف شدند
+
+به‌درخواست صاحب برنامه حذف شد تا برنامه سبک‌تر و ساده‌تر باشد. رابط کاربری حالا
+فقط دو صفحه دارد: **داشبورد** و **برنامهٔ زنگ‌ها**. اگر روزی دوباره اضافه شدند،
+این‌ها با هم اضافه شوند:
+
+- `SettingsPage.tsx`، `SoundsPage.tsx`، `LogPage.tsx` و مقادیر `PageId`
+  برابر `settings` / `sounds` / `log` در `renderer/store/appStore.ts`
+- کانال‌های `app.settings.update`، `sound.*`، `log.get`، `log.clear`،
+  `backup.*`، `data.reset`، `data.reveal` در `shared/channels.ts` و
+  متدهای متناظرشان در `MainApi` و `src/preload/index.ts`
+- متدهای `updateSettings`، کلاس `Sound`‌ CRUD و `resetAll` / `replaceState` در
+  `StateService`، و `pickSoundFile` / `exportBackup` / `importBackup` /
+  `resetAll` / `revealDataFolder` در `SystemService`
+- میان‌بر `Ctrl + ,` در `useAppHotkeys` و دکمهٔ اقدام توست‌ها
+  (`ToastPayload.actionId`، `toast.action.*`)
+- کلیدهای `settings.*`، `sounds.*`، `log.title`/`log.subtitle`/`log.empty`،
+  `backup.*`، `toast.action.*`، `nav.log` / `nav.sounds` / `nav.settings`
+  و CSS مربوطه (`.log-entry*`، `.settings-sections`، `.setting*`،
+  `.section-title`، `.nav__hint`، `.toast__action`)
+
+**چیزهایی که عمداً باقی ماندند و نباید حذف شوند:**
+
+- **نوشتن لاگ روی دیسک.** صفحهٔ گزارش رفت ولی `LogStore` و
+  `activity-log.json` هنوز نوشته می‌شوند؛ این تنها سندی است که می‌گوید چرا
+  زنگی پخش شد یا نشد. به همین دلیل کلیدهای `log.entry.log.*` و کدهای
+  `LogCode` باقی مانده‌اند، با اینکی هیچ صفحه‌ای نشانشان نمی‌دهد.
+- **فیلدهای `Settings`.** حذف صفحهٔ تنظیمات به معنی حذف تایپ‌ها نیست:
+  `volume` را `SchedulerEngine` می‌خواند، `language` همه‌جا ترجمه می‌کند،
+  و `missedBellPolicy` / `missedGraceMinutes` سیاست زنگ از دست رفته‌اند.
+  همه با مقدار پیش‌فرض کار می‌کنند ولی حذفشان موتور زنگ را می‌شکند.
+- **`ensureDefaultSoundFile()` و مهاجرت فایل‌های قدیمی** (بخش ۲.۵).
+
 ---
 
 ## ۴. قبل و بعد از هر تغییر
@@ -219,6 +254,8 @@ npm run test:e2e    # تست انتها‌به‌انتها داخل Electron �
 | `app.setName` / `app.getName()` برای کلید اجرای خودکار     | نام باید با `${PRODUCT_NAME}` در `build/installer.nsh` یکی باشد، وگرنه دو ورودی جدا در `Run` می‌سازد. |
 | `AUTOSTART_ARG = '--autostart'`                            | همین آرگومان باعث می‌شود برنامه کمینه بالا بیاید.                                                     |
 | حذف نشدن دادهٔ کاربر در uninstall                          | uninstaller فقط کلیدها و پوشهٔ نصب را پاک می‌کند؛ برنامه‌های مدرسه باید بمانند.                       |
+| باقی ماندن `LogStore` بعد از حذف صفحهٔ گزارش فعالیت        | صفحه رفت ولی لاگ باید روی دیسک نوشته شود؛ تنها سندِ «چرا زنگ پخش نشد» همین است (بخش ۳.۳).             |
+| باقی ماندن فیلدهای `Settings` بعد از حذف صفحهٔ تنظیمات     | حذف صفحه یعنی حذف راهِ تغییر، نه حذف تایپ؛ موتور زنگ این مقادیر را می‌خواند (بخش ۳.۳).                |
 
 ---
 

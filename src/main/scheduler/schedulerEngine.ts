@@ -158,29 +158,13 @@ export class SchedulerEngine {
       this.events.onToast({
         level: 'error',
         code: 'toast.soundMissing',
-        params: { title: '—' },
-        actionId: 'sounds'
+        params: { title: '—' }
       })
       throw new AudioError('no sound available')
     }
     await this.playSound(sound, state.settings.volume)
     this.log.append('log.system.test', 'info')
     this.events.onToast({ level: 'success', code: 'toast.bellPlayed', params: { title: sound.name } })
-  }
-
-  /** Play one specific sound file, e.g. the "test" button in the Sounds page. */
-  async playSoundById(soundId: string): Promise<void> {
-    const state = this.store.get()
-    const sound = state.sounds.find((item) => item.id === soundId)
-    if (!sound) throw new AudioError('sound not found')
-
-    if (!(await this.soundExists(sound))) {
-      this.log.append('log.sound.added', 'warn', { name: sound.name })
-      throw new AudioError('sound file not found')
-    }
-
-    await this.playSound(sound, state.settings.volume)
-    this.log.append('log.system.test', 'info', { name: sound.name })
   }
 
   /* ------------------------------------------------------------------ *
@@ -266,8 +250,7 @@ export class SchedulerEngine {
         this.events.onToast({
           level: 'error',
           code: 'toast.soundMissing',
-          params: { title: bell.title },
-          actionId: 'sounds'
+          params: { title: bell.title }
         })
         return
       }
@@ -277,8 +260,7 @@ export class SchedulerEngine {
         this.events.onToast({
           level: 'error',
           code: 'toast.soundMissing',
-          params: { title: bell.title },
-          actionId: 'sounds'
+          params: { title: bell.title }
         })
         return
       }
@@ -303,8 +285,7 @@ export class SchedulerEngine {
             this.events.onToast({
               level: 'error',
               code: 'toast.playbackFailed',
-              params: { error: message },
-              actionId: 'sounds'
+              params: { error: message }
             })
             return
           }

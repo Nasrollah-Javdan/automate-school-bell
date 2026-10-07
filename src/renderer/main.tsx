@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { DEFAULT_LANGUAGE } from '../i18n/index.js'
 import { App } from './App.js'
 import { ErrorBoundary } from './components/ErrorBoundary.js'
-import { appendLogs, pushToast, setLogs, setNow, setSnapshot } from './store/appStore.js'
-import type { AppSnapshot, LogEntry, ToastPayload } from '../types/index.js'
+import { pushToast, setNow, setSnapshot } from './store/appStore.js'
+import type { AppSnapshot, ToastPayload } from '../types/index.js'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'
@@ -35,13 +35,7 @@ api.on('theme:changed', () => {
     .then((snapshot) => setSnapshot(snapshot))
     .catch(() => undefined)
 })
-api.on('log:appended', (entries: LogEntry[]) => appendLogs(entries))
 api.on('toast:show', (toast: ToastPayload) => pushToast(toast))
-
-void api
-  .getLogs()
-  .then((logs) => setLogs(logs))
-  .catch(() => setLogs([]))
 
 void api
   .getSnapshot()

@@ -1,15 +1,5 @@
 import { ipcMain } from 'electron'
-import type {
-  AppSnapshot,
-  AppState,
-  Bell,
-  IpcResult,
-  LogEntry,
-  Settings,
-  Sound,
-  SystemMode,
-  Weekday
-} from '../../types/index.js'
+import type { AppSnapshot, AppState, Bell, IpcResult, SystemMode, Weekday } from '../../types/index.js'
 import { CH } from '../../shared/channels.js'
 import { isAppError } from '../../shared/errors.js'
 import { translate } from '../../i18n/index.js'
@@ -66,19 +56,11 @@ export function registerIpc(services: AppServices, state: StateService, system: 
 
   handle(CH.snapshotGet, () => buildSnapshot(services))
 
-  handle(CH.logGet, () => services.log.get() as LogEntry[])
-
   handle(CH.windowShow, () => services.windows.show())
   handle(CH.windowHide, () => services.windows.hide())
   handle(CH.windowMinimize, () => services.windows.minimize())
-  handle(CH.dataReveal, () => system.revealDataFolder())
 
   /* ---------------- system ---------------- */
-
-  handle(
-    CH.settingsUpdate,
-    mutate((patch: Partial<Settings>) => state.updateSettings(patch))
-  )
 
   handle(
     CH.systemSetMode,
@@ -87,12 +69,6 @@ export function registerIpc(services: AppServices, state: StateService, system: 
 
   handle(CH.audioPlayTest, () => attempt(() => system.playTestBell()))
   handle(CH.audioStop, () => attempt(() => system.stopAudio()))
-
-  handle(CH.logClear, () => {
-    services.log.clear()
-    services.refresh()
-    return true
-  })
 
   /* ---------------- bells ---------------- */
 
@@ -140,78 +116,5 @@ export function registerIpc(services: AppServices, state: StateService, system: 
   handle(
     CH.scheduleUpdateDays,
     mutate((id: string, days: Weekday[]) => state.updateScheduleDays(id, days))
-  )
-
-  /* ---------------- sounds ---------------- */
-
-  handle(CH.soundPickFile, () => attempt(() => system.pickSoundFile()))
-
-  handle(CH.soundImport, () =>
-    attempt(async () => {
-      const file = await system.pickSoundFile()
-      if (!file) return null
-      await state.addSoundFromFile(file, 'import')
-      services.refresh()
-      return services.store.get().sounds.at(-1) ?? null
-    })
-  )
-
-  handle(CH.soundLink, () =>
-    attempt(async () => {
-      const file = await system.pickSoundFile()
-      if (!file) return null
-      await state.addSoundFromFile(file, 'link')
-      services.refresh()
-      return services.store.get().sounds.at(-1) ?? null
-    })
-  )
-
-  handle(CH.soundProbe, (soundId: string) => attempt(() => state.probeSoundDuration(soundId)))
-
-  handle(CH.soundTest, (soundId: string) => attempt(() => services.scheduler.playSoundById(soundId)))
-
-  handle(CH.soundRelink, (soundId: string) =>
-    attempt(async () => {
-      const file = await system.pickSoundFile()
-      if (!file) return null
-      await state.relinkSound(soundId, file)
-      services.refresh()
-      return services.store.get().sounds.find((sound) => sound.id === soundId) ?? null
-    })
-  )
-
-  handle(
-    CH.soundUpdate,
-    mutate((sound: Sound) => state.updateSound(sound))
-  )
-
-  handle(
-    CH.soundRemove,
-    mutate((soundId: string) => state.removeSound(soundId))
-  )
-
-  handle(
-    CH.soundSetDefault,
-    mutate((soundId: string | null) => state.setDefaultSound(soundId))
-  )
-
-  /* ---------------- backup / reset ---------------- */
-
-  handle(CH.backupExport, () => attempt(() => system.exportBackup()))
-
-  handle(CH.backupImport, () =>
-    attempt(async () => {
-      const result = await system.importBackup()
-      if (!result) return false
-      services.refresh()
-      return true
-    })
-  )
-
-  handle(CH.dataReset, () =>
-    mutate(async () => {
-      await system.resetAll()
-      return services.store.get()
-    })
   )
 }

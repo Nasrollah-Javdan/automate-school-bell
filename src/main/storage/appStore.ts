@@ -78,15 +78,6 @@ export class AppStore {
     return this.state
   }
 
-  /** Replace the whole state (restore / reset). */
-  replace(state: AppState): AppState {
-    this.state = { ...state, version: APP_STATE_VERSION }
-    this.dirty = true
-    for (const listener of this.listeners) listener(this.state)
-    this.scheduleSave()
-    return this.state
-  }
-
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

@@ -472,22 +472,14 @@ describe('test bell', () => {
     }
   })
 
-  it('plays a specific sound by id', async () => {
+  it('reports a missing sound when the library is empty', async () => {
     const state = makeState()
-    state.sounds.push({ ...SOUND, id: 'snd2', name: 'Break', volume: 100 })
-    const test = harness(state)
+    state.sounds = []
+    const test = harness(state, false)
     try {
-      await test.engine.playSoundById('snd2')
-      expect(test.audio.played).toHaveLength(1)
-    } finally {
-      test.restore()
-    }
-  })
-
-  it('throws a clear error when the sound file is gone', async () => {
-    const test = harness(makeState(), false)
-    try {
-      await expect(test.engine.playSoundById('snd1')).rejects.toThrow(/not found/i)
+      await expect(test.engine.playTestBell()).rejects.toThrow(/no sound available/i)
+      expect(test.audio.played).toHaveLength(0)
+      expect(test.log.codes()).toContain('log.bell.soundMissing')
     } finally {
       test.restore()
     }

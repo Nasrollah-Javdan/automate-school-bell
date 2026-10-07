@@ -7,7 +7,12 @@ export { LogStore } from '../src/main/storage/logStore.js'
 export { getDataDir, getLogFile, getSoundsDir, getStateFile } from '../src/main/storage/paths.js'
 export { readJsonFile, writeJsonFileAtomic, fileExists, errorMessage } from '../src/main/storage/jsonFile.js'
 export { isSoundAvailable, soundFilePath, isSupportedSoundFile } from '../src/main/storage/soundLibrary.js'
-export { buildBackup, parseBackup, writeBackupFile, readBackupSafe } from '../src/main/storage/backupService.js'
+export {
+  buildBackup,
+  parseBackup,
+  writeBackupFile,
+  readBackupSafe
+} from '../src/main/storage/backupService.js'
 
 export { SchedulerEngine } from '../src/main/scheduler/schedulerEngine.js'
 export { AudioService } from '../src/main/audio/audioService.js'
@@ -17,6 +22,7 @@ export { AudioError, combinedVolume } from '../src/shared/audioPlayer.js'
 export { StateService } from '../src/main/services/stateService.js'
 export { SystemService } from '../src/main/services/systemService.js'
 export { buildSnapshot } from '../src/main/services/snapshot.js'
+export { registerIpc } from '../src/main/ipc/registerIpc.js'
 
 export { WindowManager } from '../src/main/window/mainWindow.js'
 export { TrayService } from '../src/main/tray/trayService.js'

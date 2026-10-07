@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { SystemMode } from '../../types/index.js'
-import { useRenderer, setPage } from '../store/appStore.js'
+import { useRenderer } from '../store/appStore.js'
 import { useHotkeys } from './useHotkeys.js'
 import { runSafely } from './useAsyncAction.js'
 
@@ -8,7 +8,6 @@ import { runSafely } from './useAsyncAction.js'
  * Application wide shortcuts:
  *   Space      → start / pause
  *   Ctrl + T   → test bell
- *   Ctrl + ,   → settings
  *   Esc        → close dialog (handled by the dialog itself)
  */
 export function useAppHotkeys(enabled: boolean): void {
@@ -23,9 +22,6 @@ export function useAppHotkeys(enabled: boolean): void {
       },
       'mod+t': () => {
         runSafely(() => window.api.playTestBell())
-      },
-      'mod+,': () => {
-        setPage('settings')
       }
     }),
     [mode]

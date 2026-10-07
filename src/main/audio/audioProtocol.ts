@@ -121,17 +121,6 @@ export function registerAudioProtocol(): void {
   })
 }
 
-/** Paths the user picked through the file dialog, registered by the sound service. */
-const linkedPaths = new Set<string>()
-
-export function allowLinkedPath(filePath: string): void {
-  linkedPaths.add(filePath)
-}
-
-export function forgetLinkedPath(filePath: string): void {
-  linkedPaths.delete(filePath)
-}
-
 /** Roots whose contents are always safe to serve. */
 function trustedRoots(): string[] {
   const roots = [getSoundsDir()]
@@ -150,6 +139,5 @@ function trustedRoots(): string[] {
 
 function isTrustedAudioPath(filePath: string): boolean {
   const normalized = resolve(filePath)
-  if (trustedRoots().some((root) => isInsideDir(normalized, root))) return true
-  return linkedPaths.has(normalized) || linkedPaths.has(filePath)
+  return trustedRoots().some((root) => isInsideDir(normalized, root))
 }

@@ -13,7 +13,7 @@ import { getDataDir, getSoundsDir } from './storage/paths.js'
 import { installGlobalErrorHandlers, reportFatalStartupError } from './system/errorGuard.js'
 import { ThemeService } from './system/themeService.js'
 import { launchedAtStartup } from './system/autoLaunch.js'
-import { pushClockTick, pushLog, pushSnapshot, pushTheme } from './services/snapshot.js'
+import { pushClockTick, pushSnapshot, pushTheme } from './services/snapshot.js'
 import { StateService } from './services/stateService.js'
 import { SystemService } from './services/systemService.js'
 import type { AppServices } from './services/types.js'
@@ -78,14 +78,13 @@ async function bootstrap(): Promise<void> {
   }
 
   const state = new StateService(services)
-  const system = new SystemService(services, state)
+  const system = new SystemService(services)
 
   theme.apply(store.get().settings.theme)
   registerAudioProtocol()
   registerIpc(services, state, system)
 
   store.subscribe(() => refresh())
-  log.subscribe((entries) => pushLog(services as AppServices, entries))
   theme.onChange((effectiveDark) => pushTheme(services as AppServices, effectiveDark))
 
   await state.ensureDefaultSoundFile()
@@ -109,7 +108,7 @@ async function bootstrap(): Promise<void> {
   powerMonitor.on('unlock-screen', () => void scheduler.recalculateAfterWake('manual'))
 
   if (firstRun) {
-    pushToast({ level: 'info', code: 'firstRun.title', actionId: 'schedule' })
+    pushToast({ level: 'info', code: 'firstRun.title' })
   }
 }
 
@@ -180,9 +179,7 @@ async function handleTrayCommand(command: TrayCommand): Promise<void> {
       }
       break
     case 'exit': {
-      const confirmed = await new SystemService(services, new StateService(services)).confirm(
-        'dialog.exitMessage'
-      )
+      const confirmed = await new SystemService(services).confirm('dialog.exitMessage')
       if (confirmed) quit()
       break
     }

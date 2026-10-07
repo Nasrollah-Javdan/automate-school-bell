@@ -1,5 +1,5 @@
 import { useEffect, type JSX } from 'react'
-import { useRenderer, dropToast, setPage, type PageId } from '../store/appStore.js'
+import { useRenderer, dropToast } from '../store/appStore.js'
 import { translate } from '../../i18n/index.js'
 import { Icon, type IconName } from './Icon.js'
 
@@ -21,8 +21,7 @@ function ToastItem({
   id,
   code,
   level,
-  params,
-  actionId
+  params
 }: ReturnType<typeof useRenderer>['toasts'][number]): JSX.Element {
   const { snapshot } = useRenderer()
   const lang = snapshot?.state.settings.language ?? 'fa'
@@ -39,18 +38,6 @@ function ToastItem({
         <Icon name={ICONS[level] ?? 'info'} size={17} />
       </span>
       <span className="grow">{text}</span>
-      {actionId ? (
-        <button
-          type="button"
-          className="toast__action"
-          onClick={() => {
-            dropToast(id)
-            setPage(actionId as PageId)
-          }}
-        >
-          {translate(lang, actionId === 'sounds' ? 'toast.action.reselect' : 'toast.action.openSettings')}
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -63,14 +50,7 @@ export function ToastHost(): JSX.Element | null {
   return (
     <div className="toast-host" aria-live="polite">
       {toasts.map((toast) => (
-        <ToastItem
-          key={toast.id}
-          id={toast.id}
-          code={toast.code}
-          level={toast.level}
-          params={toast.params}
-          actionId={toast.actionId}
-        />
+        <ToastItem key={toast.id} id={toast.id} code={toast.code} level={toast.level} params={toast.params} />
       ))}
     </div>
   )

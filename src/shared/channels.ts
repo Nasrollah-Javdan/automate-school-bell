@@ -3,7 +3,6 @@ import type { MainEvents } from '../types/index.js'
 /** IPC channel names, shared by the main process and the preload bridge. */
 export const CH = {
   snapshotGet: 'app:snapshot.get',
-  settingsUpdate: 'app.settings.update',
   systemSetMode: 'app.system.mode',
   audioPlayTest: 'audio.playTest',
   audioStop: 'audio.stop',
@@ -19,24 +18,6 @@ export const CH = {
   scheduleSetActive: 'schedule.setActive',
   scheduleUpdateDays: 'schedule.updateDays',
 
-  soundPickFile: 'sound.pickFile',
-  soundImport: 'sound.import',
-  soundLink: 'sound.link',
-  soundProbe: 'sound.probe',
-  soundTest: 'sound.test',
-  soundRelink: 'sound.relink',
-  soundUpdate: 'sound.update',
-  soundRemove: 'sound.remove',
-  soundSetDefault: 'sound.setDefault',
-
-  logGet: 'log.get',
-  logClear: 'log.clear',
-
-  backupExport: 'backup.export',
-  backupImport: 'backup.import',
-  dataReset: 'data.reset',
-  dataReveal: 'data.reveal',
-
   windowMinimize: 'window.minimize',
   windowHide: 'window.hide',
   windowShow: 'window.show',
@@ -51,7 +32,6 @@ export const CH = {
 export const EV = {
   snapshot: 'app:snapshot',
   clockTick: 'clock:tick',
-  logAppended: 'log:appended',
   toast: 'toast:show',
   themeChanged: 'theme:changed'
 } as const
@@ -60,7 +40,6 @@ export const EV = {
 export const EVENT_CHANNEL: Record<keyof MainEvents, string> = {
   'app:snapshot': EV.snapshot,
   'clock:tick': EV.clockTick,
-  'log:appended': EV.logAppended,
   'toast:show': EV.toast,
   'theme:changed': EV.themeChanged
 }

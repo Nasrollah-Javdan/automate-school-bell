@@ -1,21 +1,19 @@
 import { useSyncExternalStore } from 'react'
-import type { AppSnapshot, LanguageCode, LogEntry, ToastPayload } from '../../types/index.js'
+import type { AppSnapshot, LanguageCode, ToastPayload } from '../../types/index.js'
 import type { MessageKey, MessageParams } from '../../i18n/index.js'
 import { DEFAULT_LANGUAGE } from '../../i18n/index.js'
 
-export type PageId = 'dashboard' | 'schedule' | 'sounds' | 'log' | 'settings'
+export type PageId = 'dashboard' | 'schedule'
 
 export interface Toast {
   id: string
   level: ToastPayload['level']
   code: MessageKey
   params?: MessageParams
-  actionId?: string
 }
 
 export interface RendererState {
   snapshot: AppSnapshot | null
-  logs: LogEntry[]
   toasts: Toast[]
   now: number
   page: PageId
@@ -46,7 +44,6 @@ function createStore<T>(initial: T) {
 
 export const store = createStore<RendererState>({
   snapshot: null,
-  logs: [],
   toasts: [],
   now: Date.now(),
   page: 'dashboard',
@@ -60,11 +57,6 @@ export function useRenderer(): RendererState {
 
 export const setSnapshot = (snapshot: AppSnapshot): void =>
   store.set((state) => ({ ...state, snapshot, booted: true }))
-
-export const appendLogs = (entries: LogEntry[]): void =>
-  store.set((state) => ({ ...state, logs: [...state.logs, ...entries].slice(-500) }))
-
-export const setLogs = (logs: LogEntry[]): void => store.set((state) => ({ ...state, logs }))
 
 export const setNow = (now: number): void => store.set((state) => ({ ...state, now }))
 

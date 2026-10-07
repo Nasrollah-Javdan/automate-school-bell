@@ -79,6 +79,52 @@ describe('state validation', () => {
     expect(parsed.value.schedules).toHaveLength(1)
   })
 
+  // The Settings and Sounds pages were removed, but the school machines that
+  // already run the app still have a populated state.json. The screens are
+  // gone, so the data behind them must survive untouched — the bell engine
+  // reads volume, language and the missed-bell policy from these same fields.
+  it('keeps an existing installation working after the pages were removed', () => {
+    const existing = createDefaultState('fa')
+    const parsed = parseAppState({
+      ...existing,
+      settings: {
+        ...existing.settings,
+        volume: 55,
+        language: 'en',
+        startWithWindows: true,
+        theme: 'dark',
+        uiScale: 150,
+        missedBellPolicy: 'playIfRecent',
+        missedGraceMinutes: 25
+      },
+      sounds: [
+        {
+          id: 'snd_school',
+          name: 'school bell',
+          source: 'library',
+          fileName: 'school-bell.mp3',
+          externalPath: null,
+          volume: 90,
+          durationSec: null,
+          createdAt: 1
+        }
+      ]
+    })
+
+    expect(parsed.recovered).toBe(false)
+    const { settings, sounds } = parsed.value
+    expect(settings.volume).toBe(55)
+    expect(settings.language).toBe('en')
+    expect(settings.theme).toBe('dark')
+    expect(settings.uiScale).toBe(150)
+    expect(settings.startWithWindows).toBe(true)
+    expect(settings.missedBellPolicy).toBe('playIfRecent')
+    expect(settings.missedGraceMinutes).toBe(25)
+    expect(sounds.map((sound) => sound.fileName)).toEqual(['school-bell.mp3'])
+    // The bell itself must still resolve to a real file after loading.
+    expect(parsed.value.schedules[0]?.bells.length).toBeGreaterThan(0)
+  })
+
   it('recovers from garbage input', () => {
     expect(parseAppState(null).recovered).toBe(true)
     expect(parseAppState('nope').recovered).toBe(true)

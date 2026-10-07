@@ -9,12 +9,9 @@ import { useClock } from './hooks/useClock.js'
 import { useAppHotkeys } from './hooks/useAppHotkeys.js'
 import { DashboardPage } from './pages/DashboardPage.js'
 import { SchedulePage } from './pages/SchedulePage.js'
-import { SoundsPage } from './pages/SoundsPage.js'
-import { LogPage } from './pages/LogPage.js'
-import { SettingsPage } from './pages/SettingsPage.js'
 
 export function App(): JSX.Element {
-  const { snapshot, logs, page, now } = useRenderer()
+  const { snapshot, page, now } = useRenderer()
   const lang = snapshot?.state.settings.language ?? DEFAULT_LANGUAGE
   const dark = snapshot?.effectiveDark ?? false
   const uiScale = snapshot?.state.settings.uiScale ?? 100
@@ -43,9 +40,6 @@ export function App(): JSX.Element {
     <AppShell lang={lang}>
       {page === 'dashboard' ? <DashboardPage lang={lang} snapshot={snapshot} now={now} /> : null}
       {page === 'schedule' ? <SchedulePage lang={lang} snapshot={snapshot} /> : null}
-      {page === 'sounds' ? <SoundsPage lang={lang} snapshot={snapshot} /> : null}
-      {page === 'log' ? <LogPage lang={lang} logs={logs} /> : null}
-      {page === 'settings' ? <SettingsPage lang={lang} snapshot={snapshot} /> : null}
       <ToastHost />
     </AppShell>
   )

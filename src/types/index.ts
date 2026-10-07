@@ -253,7 +253,6 @@ export interface IpcResult<T = void> {
 export interface MainEvents {
   'app:snapshot': AppSnapshot
   'clock:tick': { now: number }
-  'log:appended': LogEntry[]
   'toast:show': ToastPayload
   'theme:changed': { effectiveDark: boolean }
 }
@@ -264,13 +263,10 @@ export interface ToastPayload {
   /** Translation key, so toasts follow the current interface language. */
   code: MessageKey
   params?: Record<string, string | number>
-  /** Optional navigation target, e.g. open the Sounds page. */
-  actionId?: string
 }
 
 export interface MainApi {
   getSnapshot(): Promise<AppSnapshot>
-  updateSettings(patch: Partial<Settings>): Promise<AppSnapshot>
   setSystemMode(mode: SystemMode): Promise<AppSnapshot>
   playTestBell(): Promise<IpcResult>
   stopAudio(): Promise<void>
@@ -285,27 +281,6 @@ export interface MainApi {
   deleteSchedule(id: string): Promise<AppSnapshot>
   setActiveSchedule(id: string): Promise<AppSnapshot>
   updateScheduleDays(id: string, days: Weekday[]): Promise<AppSnapshot>
-
-  pickSoundFile(): Promise<IpcResult<{ path: string; name: string }>>
-  importSound(): Promise<IpcResult<Sound | null>>
-  /** Use a file from its original location instead of copying it into the app. */
-  linkExternalSound(): Promise<IpcResult<Sound | null>>
-  probeSound(soundId: string): Promise<IpcResult<number | null>>
-  /** Play one specific sound file. */
-  playSound(soundId: string): Promise<IpcResult>
-  /** Ask the user for the file again and repair a broken sound entry. */
-  relinkSound(soundId: string): Promise<IpcResult<Sound | null>>
-  updateSound(sound: Sound): Promise<AppSnapshot>
-  removeSound(soundId: string): Promise<AppSnapshot>
-  setDefaultSound(soundId: string | null): Promise<AppSnapshot>
-
-  getLogs(): Promise<LogEntry[]>
-  clearLogs(): Promise<void>
-
-  backupToFile(): Promise<IpcResult<{ path: string } | null>>
-  restoreFromFile(): Promise<IpcResult<boolean>>
-  resetAll(): Promise<AppSnapshot>
-  revealDataFolder(): Promise<void>
 
   window: {
     minimize(): Promise<void>

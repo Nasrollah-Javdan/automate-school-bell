@@ -42,7 +42,6 @@ function bellsAroundNow() {
   ]
 }
 
-const logs = [
   {
     id: 'l1',
     at: Date.now() - 5000,
@@ -154,13 +153,10 @@ function writePreload(snapshot) {
     PRELOAD,
     `
 const snapshot = ${JSON.stringify(snapshot)}
-const logs = ${JSON.stringify(logs)}
 const same = () => Promise.resolve(snapshot)
 const ok = (data) => Promise.resolve({ ok: true, data: data ?? null })
 window.api = {
   getSnapshot: () => Promise.resolve(snapshot),
-  getLogs: () => Promise.resolve(logs),
-  updateSettings: same,
   setSystemMode: same,
   playTestBell: ok,
   stopAudio: () => Promise.resolve(),
@@ -173,20 +169,6 @@ window.api = {
   deleteSchedule: same,
   setActiveSchedule: same,
   updateScheduleDays: same,
-  pickSoundFile: ok,
-  importSound: ok,
-  linkExternalSound: ok,
-  probeSound: ok,
-  playSound: ok,
-  relinkSound: ok,
-  updateSound: same,
-  removeSound: same,
-  setDefaultSound: same,
-  clearLogs: () => Promise.resolve(),
-  backupToFile: ok,
-  restoreFromFile: ok,
-  resetAll: same,
-  revealDataFolder: () => Promise.resolve(),
   window: { minimize: () => Promise.resolve(), hide: () => Promise.resolve(), show: () => Promise.resolve() },
   on: () => () => {}
 }

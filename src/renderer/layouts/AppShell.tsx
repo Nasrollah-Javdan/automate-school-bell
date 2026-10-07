@@ -14,10 +14,7 @@ interface NavEntry {
 
 const NAV: NavEntry[] = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard' },
-  { id: 'schedule', labelKey: 'nav.schedule', icon: 'list' },
-  { id: 'sounds', labelKey: 'nav.sounds', icon: 'volume' },
-  { id: 'log', labelKey: 'nav.log', icon: 'clock' },
-  { id: 'settings', labelKey: 'nav.settings', icon: 'settings' }
+  { id: 'schedule', labelKey: 'nav.schedule', icon: 'list' }
 ]
 
 export function AppShell({ lang, children }: { lang: LanguageCode; children: ReactNode }): JSX.Element {
@@ -64,7 +61,6 @@ export function AppShell({ lang, children }: { lang: LanguageCode; children: Rea
           </button>
         ))}
         <span className="nav__spacer" />
-        <p className="nav__hint">{t('settings.dataFolderHint')}</p>
       </nav>
 
       <main className="app-main">{children}</main>

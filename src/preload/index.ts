@@ -3,11 +3,8 @@ import type {
   AppSnapshot,
   Bell,
   IpcResult,
-  LogEntry,
   MainApi,
   MainEvents,
-  Settings,
-  Sound,
   SystemMode,
   Unsubscribe,
   Weekday
@@ -24,7 +21,6 @@ const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
 const api: MainApi = {
   getSnapshot: () => invoke<AppSnapshot>(CH.snapshotGet),
 
-  updateSettings: (patch: Partial<Settings>) => invoke<AppSnapshot>(CH.settingsUpdate, patch),
   setSystemMode: (mode: SystemMode) => invoke<AppSnapshot>(CH.systemSetMode, mode),
   playTestBell: () => invoke<IpcResult>(CH.audioPlayTest),
   stopAudio: () => invoke<void>(CH.audioStop),
@@ -40,24 +36,6 @@ const api: MainApi = {
   deleteSchedule: (id: string) => invoke<AppSnapshot>(CH.scheduleDelete, id),
   setActiveSchedule: (id: string) => invoke<AppSnapshot>(CH.scheduleSetActive, id),
   updateScheduleDays: (id: string, days: Weekday[]) => invoke<AppSnapshot>(CH.scheduleUpdateDays, id, days),
-
-  pickSoundFile: () => invoke<IpcResult<{ path: string; name: string }>>(CH.soundPickFile),
-  importSound: () => invoke<IpcResult<Sound | null>>(CH.soundImport),
-  linkExternalSound: () => invoke<IpcResult<Sound | null>>(CH.soundLink),
-  probeSound: (soundId: string) => invoke<IpcResult<number | null>>(CH.soundProbe, soundId),
-  playSound: (soundId: string) => invoke<IpcResult>(CH.soundTest, soundId),
-  relinkSound: (soundId: string) => invoke<IpcResult<Sound | null>>(CH.soundRelink, soundId),
-  updateSound: (sound: Sound) => invoke<AppSnapshot>(CH.soundUpdate, sound),
-  removeSound: (soundId: string) => invoke<AppSnapshot>(CH.soundRemove, soundId),
-  setDefaultSound: (soundId: string | null) => invoke<AppSnapshot>(CH.soundSetDefault, soundId),
-
-  getLogs: () => invoke<LogEntry[]>(CH.logGet),
-  clearLogs: () => invoke<void>(CH.logClear),
-
-  backupToFile: () => invoke<IpcResult<{ path: string } | null>>(CH.backupExport),
-  restoreFromFile: () => invoke<IpcResult<boolean>>(CH.backupImport),
-  resetAll: () => invoke<AppSnapshot>(CH.dataReset),
-  revealDataFolder: () => invoke<void>(CH.dataReveal),
 
   window: {
     minimize: () => invoke<void>(CH.windowMinimize),

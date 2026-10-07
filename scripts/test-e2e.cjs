@@ -283,9 +283,11 @@ async function main() {
   // truncated asset would only be noticed on a school computer.
   const defaultEntry = freshStore.get().sounds.find((item) => item.fileName === 'school-bell.mp3')
   check('registers the default sound in the library', Boolean(defaultEntry))
-  const defaultDuration = defaultEntry ? await stateService.probeSoundDuration(defaultEntry.id) : null
+  const defaultDuration = defaultEntry
+    ? await new M.AudioService().probe(path.join(soundsDir, 'school-bell.mp3')).catch(() => null)
+    : null
   check(
-    'measures the default sound from the real file',
+    'reads the real duration of the bundled default sound',
     typeof defaultDuration === 'number' && defaultDuration > 0,
     `duration=${defaultDuration}`
   )
@@ -496,14 +498,16 @@ async function main() {
   section('Localization')
 
   const { translate, MESSAGES, directionOf } = M
+  // No hard-coded total: the catalogue shrinks whenever a screen is retired, so
+  // the invariant is "both languages are complete and agree", not a magic number.
   check(
     'has a Persian catalogue',
-    Object.keys(MESSAGES.fa).length > 200,
+    Object.keys(MESSAGES.fa).length > 0,
     `${Object.keys(MESSAGES.fa).length} keys`
   )
   check(
     'has an English catalogue',
-    Object.keys(MESSAGES.en).length > 200,
+    Object.keys(MESSAGES.en).length > 0,
     `${Object.keys(MESSAGES.en).length} keys`
   )
   check(
@@ -525,7 +529,27 @@ async function main() {
    * ---------------------------------------------------------------- */
   section('Window and security setup')
 
-  const { WindowManager } = M
+  const { WindowManager, registerIpc } = M
+  // The window must be created with the real IPC surface registered, otherwise
+  // the interface loads with no handler behind `app:snapshot.get` and renders
+  // an empty crash screen — which a timing accident could otherwise hide.
+  const windowServices = {
+    store: freshStore,
+    log: freshLog,
+    audio: new M.AudioService(),
+    scheduler: { recalculate: () => undefined, playTestBell: async () => undefined },
+    theme: { isDark: () => false, apply: () => undefined, onChange: () => undefined },
+    windows: { instance: null, show: () => undefined, hide: () => undefined },
+    tray: { update: () => undefined },
+    refresh: () => undefined,
+    toast: () => undefined
+  }
+  registerIpc(
+    windowServices,
+    new M.StateService(windowServices),
+    new M.SystemService(windowServices)
+  )
+
   const manager = new WindowManager({ closeToTray: () => true, minimizeToTray: () => true })
   const window = manager.create(nativeTheme.shouldUseDarkColors ? '#14161a' : '#f5f6f8', true)
   await wait(800)

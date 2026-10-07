@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { app } from 'electron'
-import type { AppSnapshot, LogEntry } from '../../types/index.js'
+import type { AppSnapshot } from '../../types/index.js'
 import { buildTodayView } from '../../shared/today.js'
 import { EV } from '../../shared/channels.js'
 import { soundFilePath } from '../storage/soundLibrary.js'
@@ -42,12 +42,6 @@ export function pushClockTick(services: AppServices): void {
   const window = services.windows.instance
   if (!window) return
   window.webContents.send(EV.clockTick, { now: Date.now() })
-}
-
-export function pushLog(services: AppServices, entries: LogEntry[]): void {
-  const window = services.windows.instance
-  if (!window || entries.length === 0) return
-  window.webContents.send(EV.logAppended, entries)
 }
 
 export function pushTheme(services: AppServices, effectiveDark: boolean): void {
